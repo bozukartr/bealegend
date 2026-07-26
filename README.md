@@ -26,6 +26,16 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - Oyuncu özelliklerine, morale, strese ve itibara etki eden satın alımlar
 - Kullanılabilir recovery ürünleri ve kalıcı eşya envanteri
 
+### Faz 3 öncesi içerik genişletmesi
+
+- 12 farklı kurgu kulüp ve daha geniş rakip/transfer havuzu
+- 8 uzmanlaşmış antrenman türü
+- 8 sosyal yaşam aktivitesi ve itibara bağlı etkinlikler
+- 17 ürünlük; performans, ekipman, sağlık, yaşam ve lüks kataloğu
+- Kategori filtreleri, itibar kilitleri, sarf ürünleri ve pasif eşya bonusları
+- 6 farklı rakip brifingi
+- Hücum ve savunma oyuncuları için 6'şar kritik maç anı
+
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
 
