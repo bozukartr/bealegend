@@ -29,6 +29,8 @@ let tab = "today";
 let creationStep = 1;
 let draft = { name:"", age:17, position:"ST", foot:"Sağ", archetype:"finisher", clubId:"baskent" };
 let match = null;
+let sheet = null;
+let toast = "";
 
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,n));
 const club = id => CLUBS.find(c=>c.id===id) || CLUBS[0];
@@ -49,12 +51,18 @@ function createCareer(){
   if(["CB","DM","LB","RB","GK"].includes(draft.position)){a.defending+=8;a.shooting-=5}
   if(["ST","LW","RW"].includes(draft.position)){a.shooting+=5;a.defending-=4}
   const c=club(draft.clubId), gen=overall(a,draft.position);
-  state={version:1,player:{name:draft.name.trim(),age:draft.age,position:draft.position,foot:draft.foot,archetype:draft.archetype,number:Math.floor(Math.random()*40)+11,overall:gen,potential:clamp(gen+24,72,94),attributes:a},clubId:c.id,date:"18 Ağustos 2026",season:"2026/27",day:1,energy:86,morale:72,form:65,fitness:91,coachTrust:48,reputation:12,xp:0,trainedToday:false,daysToMatch:3,appearances:0,starts:0,goals:0,assists:0,averageRating:0,lastRating:null,contract:{salary:c.salary,yearsLeft:3,role:"Gelecek vaat eden oyuncu"},offer:null,logs:[{id:uid(),type:"club",title:`${c.name} kariyerin başladı`,detail:"Teknik ekip senden sabır, disiplin ve istikrarlı gelişim bekliyor.",date:"Bugün"}]};
+  state={version:2,player:{name:draft.name.trim(),age:draft.age,position:draft.position,foot:draft.foot,archetype:draft.archetype,number:Math.floor(Math.random()*40)+11,overall:gen,potential:clamp(gen+24,72,94),attributes:a},clubId:c.id,date:"18 Ağustos 2026",season:"2026/27",day:1,energy:86,morale:72,form:65,fitness:91,coachTrust:48,reputation:12,xp:0,trainedToday:false,actionsLeft:2,dayActions:{training:false,social:false},social:{family:72,friends:64,partner:0,stress:28},daysToMatch:3,appearances:0,starts:0,goals:0,assists:0,averageRating:0,lastRating:null,contract:{salary:c.salary,yearsLeft:3,role:"Gelecek vaat eden oyuncu"},offer:null,logs:[{id:uid(),type:"club",title:`${c.name} kariyerin başladı`,detail:"Teknik ekip senden sabır, disiplin ve istikrarlı gelişim bekliyor.",date:"Bugün"}]};
   save(); render();
 }
 
 function save(){ if(state) localStorage.setItem(SAVE_KEY,JSON.stringify(state)); }
 function squad(){ return state.coachTrust>=74&&state.form>=62?"İlk 11":state.coachTrust>=51?"Rotasyon":"Yedek"; }
+function migrate(){
+  if(!state)return;
+  if(state.actionsLeft===undefined)state.actionsLeft=2;
+  if(!state.dayActions)state.dayActions={training:false,social:false};
+  if(!state.social)state.social={family:72,friends:64,partner:0,stress:28};
+}
 function mark(id,small=false){const c=club(id);return `<div class="club-mark ${small?"small":""}" style="--club:${c.color};--club-dark:${c.dark}" title="${c.name}">${c.short[0]}</div>`}
 function meter(label,value,tone="lime"){return `<div class="meter"><div><span>${label}</span><b>${Math.round(value)}</b></div><i><em class="${tone}" style="width:${clamp(value)}%"></em></i></div>`}
 function heading(kicker,title,text){return `<section class="page-heading"><span>${kicker}</span><h1>${title}</h1><p>${text}</p></section>`}
@@ -71,16 +79,34 @@ function renderCreation(){
 }
 
 function topbar(){return `<header class="topbar"><div class="mini-brand">BAL<span>.</span></div><div class="date"><span>${state.season} SEZONU</span><b>${state.date}</b></div><button aria-label="Bildirimler" class="bell">⌁<i>2</i></button>${mark(state.clubId,true)}</header>`}
-const NAV=[["today","⌂","Bugün"],["training","↗","Antrenman"],["match","●","Maç"],["career","▥","Kariyer"],["player","◉","Oyuncu"]];
-function nav(mobile=false){return `<nav class="${mobile?"bottom-nav":"rail-nav"}">${NAV.map(([id,icon,label])=>`<button data-tab="${id}" class="${tab===id?"active":""}"><i>${icon}</i><span>${label}</span>${id==="match"&&state.daysToMatch===0?"<em></em>":""}</button>`).join("")}</nav>`}
+const NAV=[["today","⌂","Bugün"],["career","▥","Kariyer"],["social","♡","Sosyal"],["player","◉","Oyuncu"]];
+function nav(mobile=false){return `<nav class="${mobile?"bottom-nav":"rail-nav"}">${NAV.map(([id,icon,label])=>`<button data-tab="${id}" class="${tab===id?"active":""}"><i>${icon}</i><span>${label}</span>${id==="today"&&state.daysToMatch===0?"<em></em>":""}</button>`).join("")}</nav>`}
 
 function renderToday(){
   const c=club(state.clubId), opponent=CLUBS.find(x=>x.id!==c.id), ready=state.daysToMatch===0;
-  return `<div class="stack"><section class="hero"><div><span>${c.name} · #${state.player.number}</span><h1>Merhaba,<br><em>${esc(state.player.name.split(" ")[0])}.</em></h1><p>${ready?"Maç günü. Bugünkü kararların formadaki yerini belirleyecek.":state.trainedToday?"Bugünkü çalışmanı tamamladın. Vücudunu dinle ve yarına hazırlan.":"Bugün gelişmek için bir fırsatın var. Çalışma planını doğru seç."}</p></div><aside><span>GEN</span><b>${state.player.overall}</b><small>Pot. ${state.player.potential}</small></aside><strong>${state.player.number}</strong></section>
-  <section class="pulse">${meter("Enerji",state.energy)}${meter("Moral",state.morale,"cyan")}${meter("Form",state.form,"orange")}</section>
-  <section class="panel next-match ${ready?"ready":""}"><div class="card-head"><div><span>${ready?"MAÇ GÜNÜ":"SIRADAKİ MAÇ"}</span><b>${ready?"Bugün · 20:45":state.daysToMatch+" gün sonra · 20:45"}</b></div><em>${squad()}</em></div><div class="fixture"><div>${mark(c.id)}<b>${c.short}</b></div><span>VS</span><div>${mark(opponent.id)}<b>${opponent.short}</b></div></div><button class="button primary wide" data-tab="${ready?"match":"training"}">${ready?"Maça hazırlan":state.trainedToday?"Günü incele":"Antrenmanını seç"} <span>→</span></button></section>
-  <section class="panel"><div class="section-title"><div><span>GÜNÜN PLANI</span><h2>Profesyonel rutin</h2></div><b>${state.trainedToday?"1/1":"0/1"}</b></div><div class="timeline"><div class="${state.trainedToday?"done":"active"}"><time>10:30</time><i></i><span><b>Takım antrenmanı</b><small>${state.trainedToday?"Tamamlandı":"Çalışma seçimini bekliyor"}</small></span></div><div><time>14:00</time><i></i><span><b>Video analizi</b><small>Rakip geçiş hücumları</small></span></div><div><time>19:30</time><i></i><span><b>Serbest zaman</b><small>Faz 2 sosyal yaşam alanı</small></span></div></div><button class="button secondary wide" data-action="advance" ${ready?"disabled":""}>Sonraki güne geç <span>＋1 GÜN</span></button></section>
-  <section class="panel"><div class="section-title"><div><span>SON GELİŞMELER</span><h2>Kariyer akışı</h2></div></div><div class="news">${state.logs.slice(0,4).map(l=>`<article><i>${l.type==="match"?"⚽":l.type==="training"?"↗":"◆"}</i><div><b>${l.title}</b><p>${l.detail}</p></div><time>${l.date}</time></article>`).join("")}</div></section></div>`;
+  const firstName=esc(state.player.name.split(" ")[0]);
+  return `<div class="day-screen">
+    ${toast?`<div class="game-toast"><i>✓</i><span>${toast}</span></div>`:""}
+    <section class="day-hud">
+      <div><span>GÜN ${state.day} · ${ready?"MAÇ GÜNÜ":"RUTİN"}</span><h1>${ready?"Hazır mısın,":"Bugün senin,"}<br><em>${firstName}?</em></h1></div>
+      <aside><span>AKSİYON</span><b>${ready?"!":state.actionsLeft}</b><small>${ready?"MAÇ":"/ 2"}</small></aside>
+    </section>
+    <section class="vitals">${meter("Enerji",state.energy)}${meter("Moral",state.morale,"cyan")}${meter("Form",state.form,"orange")}</section>
+    ${ready?`<section class="match-mission"><div class="mission-label"><i></i><span>ANA GÖREV</span><em>${squad()}</em></div><div class="mini-fixture"><aside>${mark(c.id,true)}<b>${c.short}</b></aside><strong>20:45</strong><aside>${mark(opponent.id,true)}<b>${opponent.short}</b></aside></div><p>Üç kritik anda vereceğin kararlar maç puanını ve teknik direktör güvenini belirleyecek.</p></section>`:
+    `<section class="day-actions">
+      <button data-sheet="training" class="${state.dayActions.training?"completed":""}" ${state.actionsLeft===0&&!state.dayActions.training?"disabled":""}><i>↗</i><span><b>Antrenman</b><small>${state.dayActions.training?"Tamamlandı":"Gelişim + güven"}</small></span><em>${state.dayActions.training?"✓":"1 AP"}</em></button>
+      <button data-sheet="social" class="${state.dayActions.social?"completed":""}" ${state.actionsLeft===0&&!state.dayActions.social?"disabled":""}><i>♡</i><span><b>Sosyal yaşam</b><small>${state.dayActions.social?"Tamamlandı":"Moral + ilişkiler"}</small></span><em>${state.dayActions.social?"✓":"1 AP"}</em></button>
+      <button data-sheet="recovery" ${state.actionsLeft===0?"disabled":""}><i>◌</i><span><b>Toparlanma</b><small>Enerji + stres</small></span><em>1 AP</em></button>
+      <button data-sheet="briefing"><i>⌘</i><span><b>Maç brifingi</b><small>${state.daysToMatch} gün kaldı</small></span><em>ÜCRETSİZ</em></button>
+    </section>`}
+    <section class="day-brief">
+      <div><span>SIRADAKİ HEDEF</span><b>${ready?"Sahaya çık":state.daysToMatch+" gün sonra maç"}</b></div>
+      <div><span>KADRO ROLÜ</span><b>${squad()}</b></div>
+      <button data-tab="career" aria-label="Kariyeri aç">→</button>
+    </section>
+    <div class="day-cta-space"></div>
+    <section class="day-cta"><button class="button primary" data-action="${ready?"open-match":"advance"}">${ready?"MAÇA ÇIK":"GÜNÜ BİTİR"}<span>${ready?"→":"＋1 GÜN"}</span></button></section>
+  </div>`;
 }
 
 function renderTraining(){
@@ -89,6 +115,38 @@ function renderTraining(){
   ${state.trainedToday?`<div class="status"><i>✓</i><div><b>Günlük çalışma tamamlandı</b><p>Yeni bir çalışma için sonraki güne geçmelisin.</p></div></div>`:""}
   <section class="actions">${Object.entries(TRAINING).map(([id,t])=>`<button data-training="${id}" ${state.trainedToday?"disabled":""}><i>${t.icon}</i><span><b>${t.name}</b><small>${t.caption}</small></span><em class="${id==="recovery"?"positive":""}">${id==="recovery"?"+30":"-"+t.energy} EN</em><strong>→</strong></button>`).join("")}</section>
   <section class="coach"><i>TD</i><div><span>TEKNİK DİREKTÖR NOTU</span><p>“Formayı antrenmanda kazanırsın. Güven seviyen şu an <b>${Math.round(state.coachTrust)}</b>; ${state.coachTrust>=70?"seni ilk 11 için ciddi biçimde düşünüyorum.":"istikrar göstermeye devam et."}”</p></div></section></div>`;
+}
+
+function renderSocial(){
+  const s=state.social;
+  return `<div class="social-screen">${heading("SOSYAL YAŞAM",'Saha dışında <em>sen.</em>',"İlişkiler moralini, stresini ve sahadaki karar kaliteni etkiler.")}
+    <section class="social-summary"><div><span>MENTAL DENGE</span><b>${Math.round((state.morale+100-s.stress)/2)}</b><small>/100</small></div><aside>${meter("Aile",s.family,"cyan")}${meter("Arkadaşlar",s.friends)}${meter("Stres",s.stress,"orange")}</aside></section>
+    <section class="relationship-list">
+      <article><i>⌂</i><div><b>Aile</b><span>Son görüşme: ${state.dayActions.social?"bugün":"4 gün önce"}</span></div><em>${Math.round(s.family)}</em></article>
+      <article><i>♧</i><div><b>Arkadaş çevresi</b><span>Çevren seni dışarı çağırıyor</span></div><em>${Math.round(s.friends)}</em></article>
+      <article class="locked"><i>♡</i><div><b>Partner</b><span>Kariyer ilerledikçe açılır</span></div><em>—</em></article>
+    </section>
+    <button class="button primary wide social-quick" data-sheet="social" ${state.actionsLeft===0||state.dayActions.social?"disabled":""}>Bugün sosyal plan yap <span>1 AP</span></button>
+  </div>`;
+}
+
+function renderSheet(){
+  if(!sheet)return "";
+  let title="",subtitle="",content="";
+  if(sheet==="training"){
+    title="Antrenman seç";subtitle="Bir çalışma seç, sonucu gör ve güne otomatik dön.";
+    content=`<div class="sheet-options">${Object.entries(TRAINING).filter(([id])=>id!=="recovery").map(([id,t])=>`<button data-training="${id}" ${state.dayActions.training?"disabled":""}><i>${t.icon}</i><span><b>${t.name}</b><small>${t.caption}</small></span><em>-${t.energy} EN</em></button>`).join("")}</div>`;
+  }else if(sheet==="social"){
+    title="Sosyal plan";subtitle="Saha dışındaki seçimin moral ve ilişkilerini değiştirir.";
+    content=`<div class="sheet-options"><button data-social="family"><i>⌂</i><span><b>Aileyle vakit geçir</b><small>Aile +8 · Moral +5</small></span><em>-8 EN</em></button><button data-social="friends"><i>♧</i><span><b>Arkadaşlarla buluş</b><small>Arkadaş +9 · Moral +7</small></span><em>-14 EN</em></button><button data-social="gaming"><i>◇</i><span><b>Evde oyun gecesi</b><small>Stres -7 · Moral +3</small></span><em>-4 EN</em></button></div>`;
+  }else if(sheet==="recovery"){
+    title="Toparlanma";subtitle="Günün bir aksiyonunu vücuduna ve zihnine ayır.";
+    content=`<div class="recovery-focus"><i>◌</i><b>Aktif toparlanma</b><p>+30 enerji · -10 stres · +4 moral</p><button class="button primary wide" data-action="recover">Toparlanmayı başlat <span>1 AP</span></button></div>`;
+  }else{
+    title="Maç brifingi";subtitle=`${state.daysToMatch} gün sonra oynanacak maç için teknik ekip raporu.`;
+    content=`<div class="briefing-card"><span>RAKİP PLANI</span><h3>Geçişlerde merkez boşalıyor</h3><p>Topu kazandıktan sonraki ilk pasında risk almak hücum oyuncuları için daha yüksek ödül sağlayabilir. Savunmacılar çizgiyi erken terk etmemeli.</p><div><b>Tempo</b><em>Yüksek</em><b>Risk</b><em>Orta</em></div></div>`;
+  }
+  return `<div class="sheet-backdrop" data-action="close-sheet"></div><section class="action-sheet"><header><div><span>GÜNLÜK AKSİYON</span><h2>${title}</h2><p>${subtitle}</p></div><button data-action="close-sheet" aria-label="Kapat">×</button></header>${content}</section>`;
 }
 
 function matchMoments(defensive){
@@ -126,10 +184,10 @@ function choose(choiceIndex){
 
 function finishMatch(){
   const appearances=state.appearances+1, avg=(state.averageRating*state.appearances+match.rating)/appearances, c=club(state.clubId), o=club(match.opponentId), won=match.scoreFor>match.scoreAgainst;
-  Object.assign(state,{energy:clamp(state.energy-32),fitness:clamp(state.fitness-9),morale:clamp(state.morale+(won?6:match.scoreFor===match.scoreAgainst?1:-4)),form:clamp(state.form+(match.rating>=7?5:match.rating<6?-4:1)),coachTrust:clamp(state.coachTrust+(match.rating>=7?4:match.rating<6?-2:1)),reputation:clamp(state.reputation+Math.max(1,match.rating-5)),appearances,goals:state.goals+match.goals,assists:state.assists+match.assists,averageRating:Number(avg.toFixed(2)),lastRating:match.rating,daysToMatch:5,trainedToday:true});
+  Object.assign(state,{energy:clamp(state.energy-32),fitness:clamp(state.fitness-9),morale:clamp(state.morale+(won?6:match.scoreFor===match.scoreAgainst?1:-4)),form:clamp(state.form+(match.rating>=7?5:match.rating<6?-4:1)),coachTrust:clamp(state.coachTrust+(match.rating>=7?4:match.rating<6?-2:1)),reputation:clamp(state.reputation+Math.max(1,match.rating-5)),appearances,goals:state.goals+match.goals,assists:state.assists+match.assists,averageRating:Number(avg.toFixed(2)),lastRating:match.rating,daysToMatch:5,trainedToday:true,actionsLeft:0});
   state.logs.unshift({id:uid(),type:"match",title:`${c.short} ${match.scoreFor}–${match.scoreAgainst} ${o.short}`,detail:`${match.rating.toFixed(1)} puan · ${match.goals} gol · ${match.assists} asist`,date:"Bugün"});
   if(!state.offer&&appearances>=3&&avg>=7&&Math.random()>.55){const targets=CLUBS.filter(x=>x.id!==c.id&&x.level>=c.level),t=targets[Math.floor(Math.random()*targets.length)];if(t)state.offer={clubId:t.id,salary:Math.round(t.salary*(1.15+state.reputation/100)),years:4,role:t.level>c.level?"Rotasyon oyuncusu":"İlk 11 oyuncusu"}}
-  match=null;tab="today";save();render();
+  match=null;tab="today";toast=`Maç tamamlandı · ${state.lastRating.toFixed(1)} puan`;save();render();
 }
 
 function renderMatch(){
@@ -157,34 +215,53 @@ function renderPlayer(){
 
 function render(){
   if(!state){renderCreation();return}
+  migrate();
   const c=club(state.clubId);document.documentElement.style.setProperty("--accent",c.color);
-  const screen=tab==="today"?renderToday():tab==="training"?renderTraining():tab==="match"?renderMatch():tab==="career"?renderCareer():renderPlayer();
-  document.querySelector("#app").innerHTML=`<main class="game-shell"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 1 · CORE CAREER</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}</section></main>`;
+  const screen=tab==="today"?renderToday():tab==="match"?renderMatch():tab==="career"?renderCareer():tab==="social"?renderSocial():renderPlayer();
+  document.querySelector("#app").innerHTML=`<main class="game-shell"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 2 · LIFE & CAREER</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}${renderSheet()}</section></main>`;
 }
 
 function train(id){
-  if(state.trainedToday)return;const t=TRAINING[id],c=club(state.clubId),a=state.player.attributes;
+  if(state.dayActions.training||state.actionsLeft<=0)return;const t=TRAINING[id],c=club(state.clubId),a=state.player.attributes;
   Object.entries(t.gains).forEach(([k,g])=>a[k]=clamp(Number((a[k]+g*c.dev/75).toFixed(2))));
-  state.energy=clamp(state.energy-t.energy);state.morale=clamp(state.morale+t.morale);state.fitness=clamp(state.fitness+(id==="recovery"?4:-t.energy*.08));state.coachTrust=clamp(state.coachTrust+(id==="recovery"?.5:1.6));state.xp+=id==="recovery"?4:14;state.trainedToday=true;state.player.overall=overall(a,state.player.position);state.logs.unshift({id:uid(),type:"training",title:`${t.name} tamamlandı`,detail:id==="recovery"?"Vücudun toparlandı; enerji ve moral yükseldi.":"Teknik ekip çalışma disiplininden memnun.",date:"Bugün"});save();render();
+  state.energy=clamp(state.energy-t.energy);state.morale=clamp(state.morale+t.morale);state.fitness=clamp(state.fitness-t.energy*.08);state.coachTrust=clamp(state.coachTrust+1.6);state.xp+=14;state.trainedToday=true;state.dayActions.training=true;state.actionsLeft--;state.player.overall=overall(a,state.player.position);state.logs.unshift({id:uid(),type:"training",title:`${t.name} tamamlandı`,detail:"Teknik ekip çalışma disiplininden memnun.",date:"Bugün"});sheet=null;tab="today";toast=`${t.name} tamamlandı · +14 XP`;save();render();
 }
-function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2);state.trainedToday=false;state.daysToMatch=Math.max(0,state.daysToMatch-1);save();render()}
+function socialAction(id){
+  if(state.dayActions.social||state.actionsLeft<=0)return;
+  const effects={
+    family:{energy:-8,morale:5,family:8,friends:0,stress:-4,label:"Aileyle güzel bir akşam"},
+    friends:{energy:-14,morale:7,family:0,friends:9,stress:-5,label:"Arkadaşlarla buluşma"},
+    gaming:{energy:-4,morale:3,family:0,friends:2,stress:-7,label:"Evde oyun gecesi"}
+  }[id];
+  state.energy=clamp(state.energy+effects.energy);state.morale=clamp(state.morale+effects.morale);state.social.family=clamp(state.social.family+effects.family);state.social.friends=clamp(state.social.friends+effects.friends);state.social.stress=clamp(state.social.stress+effects.stress);state.dayActions.social=true;state.actionsLeft--;state.logs.unshift({id:uid(),type:"social",title:effects.label,detail:`Moral +${effects.morale} · Stres ${effects.stress}`,date:"Bugün"});sheet=null;tab="today";toast=`${effects.label} · Moral +${effects.morale}`;save();render();
+}
+function recover(){
+  if(state.actionsLeft<=0)return;
+  state.energy=clamp(state.energy+30);state.morale=clamp(state.morale+4);state.fitness=clamp(state.fitness+4);state.social.stress=clamp(state.social.stress-10);state.actionsLeft--;state.logs.unshift({id:uid(),type:"training",title:"Aktif toparlanma tamamlandı",detail:"Enerji +30 · Stres -10",date:"Bugün"});sheet=null;tab="today";toast="Vücudun ve zihnin toparlandı";save();render();
+}
+function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2);state.social.stress=clamp(state.social.stress+2);state.trainedToday=false;state.actionsLeft=2;state.dayActions={training:false,social:false};state.daysToMatch=Math.max(0,state.daysToMatch-1);toast="Yeni gün başladı · 2 aksiyon hazır";save();render()}
 function offerDecision(accept){const o=state.offer,c=club(o.clubId);if(accept){state.clubId=c.id;state.coachTrust=45;state.morale=clamp(state.morale+8);state.contract={salary:o.salary,yearsLeft:o.years,role:o.role};state.logs.unshift({id:uid(),type:"club",title:`${c.name} transferi tamamlandı`,detail:"Yeni bir şehir, yeni beklentiler ve yepyeni bir forma mücadelesi.",date:"Bugün"})}else{state.morale=clamp(state.morale+2);state.logs.unshift({id:uid(),type:"club",title:`${c.name} teklifi reddedildi`,detail:"Mevcut kulübünde gelişmeye devam etme kararı aldın.",date:"Bugün"})}state.offer=null;save();render()}
 
 document.addEventListener("input",e=>{if(e.target.id==="player-name"){draft.name=e.target.value;const b=document.querySelector('[data-action="next"]');if(b)b.disabled=!draft.name.trim()}});
 document.addEventListener("change",e=>{if(e.target.id==="player-age")draft.age=Number(e.target.value);if(e.target.id==="player-foot")draft.foot=e.target.value});
 document.addEventListener("click",e=>{
+  if(e.target.closest('[data-action="close-sheet"]')){sheet=null;render();return}
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.position){draft.position=b.dataset.position;renderCreation()}
   else if(b.dataset.archetype){draft.archetype=b.dataset.archetype;renderCreation()}
   else if(b.dataset.club){draft.clubId=b.dataset.club;renderCreation()}
-  else if(b.dataset.tab){tab=b.dataset.tab;render()}
+  else if(b.dataset.tab){tab=b.dataset.tab;sheet=null;render()}
+  else if(b.dataset.sheet){sheet=b.dataset.sheet;render()}
   else if(b.dataset.training)train(b.dataset.training);
+  else if(b.dataset.social)socialAction(b.dataset.social);
   else if(b.dataset.choice!==undefined)choose(Number(b.dataset.choice));
   else if(b.dataset.offer)offerDecision(b.dataset.offer==="accept");
   else if(b.dataset.action==="next"){creationStep++;renderCreation()}
   else if(b.dataset.action==="back"){creationStep--;renderCreation()}
   else if(b.dataset.action==="create")createCareer();
   else if(b.dataset.action==="advance")advance();
+  else if(b.dataset.action==="recover")recover();
+  else if(b.dataset.action==="open-match"){tab="match";toast="";render()}
   else if(b.dataset.action==="start-match")startMatch();
   else if(b.dataset.action==="finish-match")finishMatch();
   else if(b.dataset.action==="reset"&&confirm("Mevcut kariyer silinsin mi?")){localStorage.removeItem(SAVE_KEY);state=null;tab="today";creationStep=1;render()}
