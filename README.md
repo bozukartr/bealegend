@@ -44,6 +44,12 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - Neon görünüm yerine daha sakin ve premium spor arayüzü
 - ISO tarih saklama ve gerçek takvim üzerinden gün ilerletme
 - Ay sonu, yıl sonu ve sezon değişimlerinde doğru tarih gösterimi
+- Yedi günlük maç takvimi ve maç günü işaretlemesi
+- Günlük profesyonel hedefler ve kaçırıldığında sıfırlanan seri sistemi
+- Hedeflerden XP, moral, form, güven ve itibar ödülleri
+- 100 XP tabanlı oyuncu seviye sistemi
+- Overall kartından açılan gelişim, XP ve güçlü özellikler paneli
+- Desteklenen cihazlarda önemli aksiyonlar için hafif dokunsal geri bildirim
 
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
