@@ -36,6 +36,15 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - 6 farklı rakip brifingi
 - Hücum ve savunma oyuncuları için 6'şar kritik maç anı
 
+## Faz 4 — Oyuncu deneyimi
+
+- Ana HUD'da Overall, potansiyel, forma numarası, pozisyon ve kulüp özeti
+- Overall ve günlük aksiyonlar için ayrı, tek bakışta okunabilen statü blokları
+- `#6D9C79` merkezli açık mat yeşil tema
+- Neon görünüm yerine daha sakin ve premium spor arayüzü
+- ISO tarih saklama ve gerçek takvim üzerinden gün ilerletme
+- Ay sonu, yıl sonu ve sezon değişimlerinde doğru tarih gösterimi
+
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
 
