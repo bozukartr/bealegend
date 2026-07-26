@@ -23,6 +23,14 @@ const TRAINING = {
   tactical:{ name:"Taktik", caption:"Karar, görüş, savunma", icon:"⌘", energy:12, morale:0, gains:{decisions:.45,vision:.4,defending:.25} },
   recovery:{ name:"Aktif dinlenme", caption:"Enerji, moral ve form", icon:"◌", energy:-30, morale:4, gains:{} }
 };
+const SHOP_ITEMS = {
+  recovery:{ name:"Recovery içeceği", category:"PERFORMANS", icon:"◌", price:280, repeatable:true, text:"Maç ve antrenman sonrası hızlı destek.", effect:"+18 enerji · -4 stres" },
+  boots:{ name:"Pro krampon", category:"EKİPMAN", icon:"↗", price:5400, text:"Daha iyi temas ve saha hissi.", effect:"+1 şut · +1 teknik" },
+  headphones:{ name:"ANC kulaklık", category:"YAŞAM", icon:"♫", price:3200, text:"Yolculuklarda zihnini oyundan uzaklaştır.", effect:"Stres -8 · moral +3" },
+  console:{ name:"Oyun konsolu", category:"YAŞAM", icon:"◇", price:18500, text:"Evdeki sosyal planı daha verimli yapar.", effect:"Oyun gecesi moral bonusu" },
+  watch:{ name:"Prestij saat", category:"LÜKS", icon:"⌁", price:62000, text:"Saha dışındaki imajını güçlendir.", effect:"+4 itibar · +3 moral" },
+  car:{ name:"Sportif otomobil", category:"LÜKS", icon:"➜", price:185000, text:"Yeni hayatının en görünür ödülü.", effect:"+9 itibar · +6 moral" }
+};
 
 let state = null;
 let tab = "today";
@@ -51,7 +59,7 @@ function createCareer(){
   if(["CB","DM","LB","RB","GK"].includes(draft.position)){a.defending+=8;a.shooting-=5}
   if(["ST","LW","RW"].includes(draft.position)){a.shooting+=5;a.defending-=4}
   const c=club(draft.clubId), gen=overall(a,draft.position);
-  state={version:2,player:{name:draft.name.trim(),age:draft.age,position:draft.position,foot:draft.foot,archetype:draft.archetype,number:Math.floor(Math.random()*40)+11,overall:gen,potential:clamp(gen+24,72,94),attributes:a},clubId:c.id,date:"18 Ağustos 2026",season:"2026/27",day:1,energy:86,morale:72,form:65,fitness:91,coachTrust:48,reputation:12,xp:0,trainedToday:false,actionsLeft:2,dayActions:{training:false,social:false},social:{family:72,friends:64,partner:0,stress:28},daysToMatch:3,appearances:0,starts:0,goals:0,assists:0,averageRating:0,lastRating:null,contract:{salary:c.salary,yearsLeft:3,role:"Gelecek vaat eden oyuncu"},offer:null,logs:[{id:uid(),type:"club",title:`${c.name} kariyerin başladı`,detail:"Teknik ekip senden sabır, disiplin ve istikrarlı gelişim bekliyor.",date:"Bugün"}]};
+  state={version:3,player:{name:draft.name.trim(),age:draft.age,position:draft.position,foot:draft.foot,archetype:draft.archetype,number:Math.floor(Math.random()*40)+11,overall:gen,potential:clamp(gen+24,72,94),attributes:a},clubId:c.id,date:"18 Ağustos 2026",season:"2026/27",day:1,energy:86,morale:72,form:65,fitness:91,coachTrust:48,reputation:12,xp:0,trainedToday:false,actionsLeft:2,dayActions:{training:false,social:false},social:{family:72,friends:64,partner:0,stress:28},finances:{balance:12500,totalSpent:0,nextPayDay:7},inventory:{},daysToMatch:3,appearances:0,starts:0,goals:0,assists:0,averageRating:0,lastRating:null,contract:{salary:c.salary,yearsLeft:3,role:"Gelecek vaat eden oyuncu"},offer:null,logs:[{id:uid(),type:"club",title:`${c.name} kariyerin başladı`,detail:"Teknik ekip senden sabır, disiplin ve istikrarlı gelişim bekliyor.",date:"Bugün"}]};
   save(); render();
 }
 
@@ -62,6 +70,9 @@ function migrate(){
   if(state.actionsLeft===undefined)state.actionsLeft=2;
   if(!state.dayActions)state.dayActions={training:false,social:false};
   if(!state.social)state.social={family:72,friends:64,partner:0,stress:28};
+  if(!state.finances)state.finances={balance:12500,totalSpent:0,nextPayDay:Math.max(7,state.day+6)};
+  if(!state.inventory)state.inventory={};
+  state.version=3;
 }
 function mark(id,small=false){const c=club(id);return `<div class="club-mark ${small?"small":""}" style="--club:${c.color};--club-dark:${c.dark}" title="${c.name}">${c.short[0]}</div>`}
 function meter(label,value,tone="lime"){return `<div class="meter"><div><span>${label}</span><b>${Math.round(value)}</b></div><i><em class="${tone}" style="width:${clamp(value)}%"></em></i></div>`}
@@ -78,7 +89,7 @@ function renderCreation(){
   document.querySelector("#app").innerHTML=`<main class="creation-shell"><section class="brand"><span>PLAYER CAREER</span><h1>BE A<br><em>LEGEND</em></h1><p>Kader verilmez. Her gün yeniden kazanılır.</p></section><section class="creation-card"><div class="step-head"><div><span>KARİYER OLUŞTUR</span><b>${creationStep}/3</b></div><i><em style="width:${creationStep*33.34}%"></em></i></div><div class="form-step">${content}</div><footer>${creationStep>1?`<button class="button ghost" data-action="back">Geri</button>`:""}<button class="button primary" data-action="${creationStep===3?"create":"next"}" ${creationStep===1&&!draft.name.trim()?"disabled":""}>${creationStep===3?"Kariyeri başlat":"Devam et"} <span>→</span></button></footer></section></main>`;
 }
 
-function topbar(){return `<header class="topbar"><div class="mini-brand">BAL<span>.</span></div><div class="date"><span>${state.season} SEZONU</span><b>${state.date}</b></div><button aria-label="Bildirimler" class="bell">⌁<i>2</i></button>${mark(state.clubId,true)}</header>`}
+function topbar(){return `<header class="topbar"><div class="mini-brand">BAL<span>.</span></div><div class="date"><span>${state.season} SEZONU</span><b>${state.date}</b></div><button class="wallet-pill" data-sheet="shop"><span>CÜZDAN</span><b>${money(state.finances.balance)}</b></button>${mark(state.clubId,true)}</header>`}
 const NAV=[["today","⌂","Bugün"],["career","▥","Kariyer"],["social","♡","Sosyal"],["player","◉","Oyuncu"]];
 function nav(mobile=false){return `<nav class="${mobile?"bottom-nav":"rail-nav"}">${NAV.map(([id,icon,label])=>`<button data-tab="${id}" class="${tab===id?"active":""}"><i>${icon}</i><span>${label}</span>${id==="today"&&state.daysToMatch===0?"<em></em>":""}</button>`).join("")}</nav>`}
 
@@ -120,6 +131,7 @@ function renderTraining(){
 function renderSocial(){
   const s=state.social;
   return `<div class="social-screen">${heading("SOSYAL YAŞAM",'Saha dışında <em>sen.</em>',"İlişkiler moralini, stresini ve sahadaki karar kaliteni etkiler.")}
+    <button class="lifestyle-wallet" data-sheet="shop"><div><span>YAŞAM TARZI</span><b>${money(state.finances.balance)}</b><small>${Object.keys(state.inventory).length} farklı eşya · Maaşa ${Math.max(0,state.finances.nextPayDay-state.day)} gün</small></div><em>MAĞAZA →</em></button>
     <section class="social-summary"><div><span>MENTAL DENGE</span><b>${Math.round((state.morale+100-s.stress)/2)}</b><small>/100</small></div><aside>${meter("Aile",s.family,"cyan")}${meter("Arkadaşlar",s.friends)}${meter("Stres",s.stress,"orange")}</aside></section>
     <section class="relationship-list">
       <article><i>⌂</i><div><b>Aile</b><span>Son görüşme: ${state.dayActions.social?"bugün":"4 gün önce"}</span></div><em>${Math.round(s.family)}</em></article>
@@ -141,7 +153,10 @@ function renderSheet(){
     content=`<div class="sheet-options"><button data-social="family"><i>⌂</i><span><b>Aileyle vakit geçir</b><small>Aile +8 · Moral +5</small></span><em>-8 EN</em></button><button data-social="friends"><i>♧</i><span><b>Arkadaşlarla buluş</b><small>Arkadaş +9 · Moral +7</small></span><em>-14 EN</em></button><button data-social="gaming"><i>◇</i><span><b>Evde oyun gecesi</b><small>Stres -7 · Moral +3</small></span><em>-4 EN</em></button></div>`;
   }else if(sheet==="recovery"){
     title="Toparlanma";subtitle="Günün bir aksiyonunu vücuduna ve zihnine ayır.";
-    content=`<div class="recovery-focus"><i>◌</i><b>Aktif toparlanma</b><p>+30 enerji · -10 stres · +4 moral</p><button class="button primary wide" data-action="recover">Toparlanmayı başlat <span>1 AP</span></button></div>`;
+    content=`<div class="recovery-focus"><i>◌</i><b>Aktif toparlanma</b><p>+30 enerji · -10 stres · +4 moral</p><button class="button primary wide" data-action="recover">Toparlanmayı başlat <span>1 AP</span></button>${state.inventory.recovery?`<button class="button secondary wide recovery-item" data-action="use-recovery">Recovery içeceği kullan <span>x${state.inventory.recovery}</span></button>`:""}</div>`;
+  }else if(sheet==="shop"){
+    title="Mağaza";subtitle=`Bakiye ${money(state.finances.balance)} · Alışveriş aksiyon puanı harcamaz.`;
+    content=`<div class="shop-list">${Object.entries(SHOP_ITEMS).map(([id,item])=>{const owned=state.inventory[id]||0, sold=!item.repeatable&&owned;return `<button data-buy="${id}" ${sold||state.finances.balance<item.price?"disabled":""}><i>${item.icon}</i><span><small>${item.category}</small><b>${item.name}</b><p>${item.effect}</p></span><em>${sold?"ALINDI":money(item.price)}</em>${item.repeatable&&owned?`<strong>x${owned}</strong>`:""}</button>`}).join("")}</div>`;
   }else{
     title="Maç brifingi";subtitle=`${state.daysToMatch} gün sonra oynanacak maç için teknik ekip raporu.`;
     content=`<div class="briefing-card"><span>RAKİP PLANI</span><h3>Geçişlerde merkez boşalıyor</h3><p>Topu kazandıktan sonraki ilk pasında risk almak hücum oyuncuları için daha yüksek ödül sağlayabilir. Savunmacılar çizgiyi erken terk etmemeli.</p><div><b>Tempo</b><em>Yüksek</em><b>Risk</b><em>Orta</em></div></div>`;
@@ -231,15 +246,31 @@ function socialAction(id){
   const effects={
     family:{energy:-8,morale:5,family:8,friends:0,stress:-4,label:"Aileyle güzel bir akşam"},
     friends:{energy:-14,morale:7,family:0,friends:9,stress:-5,label:"Arkadaşlarla buluşma"},
-    gaming:{energy:-4,morale:3,family:0,friends:2,stress:-7,label:"Evde oyun gecesi"}
+    gaming:{energy:-4,morale:state.inventory.console?6:3,family:0,friends:2,stress:state.inventory.console?-10:-7,label:"Evde oyun gecesi"}
   }[id];
   state.energy=clamp(state.energy+effects.energy);state.morale=clamp(state.morale+effects.morale);state.social.family=clamp(state.social.family+effects.family);state.social.friends=clamp(state.social.friends+effects.friends);state.social.stress=clamp(state.social.stress+effects.stress);state.dayActions.social=true;state.actionsLeft--;state.logs.unshift({id:uid(),type:"social",title:effects.label,detail:`Moral +${effects.morale} · Stres ${effects.stress}`,date:"Bugün"});sheet=null;tab="today";toast=`${effects.label} · Moral +${effects.morale}`;save();render();
+}
+function buyItem(id){
+  const item=SHOP_ITEMS[id];if(!item||state.finances.balance<item.price||(!item.repeatable&&state.inventory[id]))return;
+  state.finances.balance-=item.price;state.finances.totalSpent+=item.price;state.inventory[id]=(state.inventory[id]||0)+1;
+  if(id==="boots"){state.player.attributes.shooting=clamp(state.player.attributes.shooting+1);state.player.attributes.technique=clamp(state.player.attributes.technique+1);state.player.overall=overall(state.player.attributes,state.player.position)}
+  if(id==="headphones"){state.social.stress=clamp(state.social.stress-8);state.morale=clamp(state.morale+3)}
+  if(id==="watch"){state.reputation=clamp(state.reputation+4);state.morale=clamp(state.morale+3)}
+  if(id==="car"){state.reputation=clamp(state.reputation+9);state.morale=clamp(state.morale+6)}
+  state.logs.unshift({id:uid(),type:"shopping",title:`${item.name} satın alındı`,detail:`${money(item.price)} · ${item.effect}`,date:"Bugün"});
+  toast=`${item.name} satın alındı`;save();render();
+}
+function useRecovery(){
+  if(!state.inventory.recovery)return;
+  state.inventory.recovery--;if(!state.inventory.recovery)delete state.inventory.recovery;
+  state.energy=clamp(state.energy+18);state.social.stress=clamp(state.social.stress-4);
+  sheet=null;tab="today";toast="Recovery içeceği kullanıldı · Enerji +18";save();render();
 }
 function recover(){
   if(state.actionsLeft<=0)return;
   state.energy=clamp(state.energy+30);state.morale=clamp(state.morale+4);state.fitness=clamp(state.fitness+4);state.social.stress=clamp(state.social.stress-10);state.actionsLeft--;state.logs.unshift({id:uid(),type:"training",title:"Aktif toparlanma tamamlandı",detail:"Enerji +30 · Stres -10",date:"Bugün"});sheet=null;tab="today";toast="Vücudun ve zihnin toparlandı";save();render();
 }
-function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2);state.social.stress=clamp(state.social.stress+2);state.trainedToday=false;state.actionsLeft=2;state.dayActions={training:false,social:false};state.daysToMatch=Math.max(0,state.daysToMatch-1);toast="Yeni gün başladı · 2 aksiyon hazır";save();render()}
+function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2);state.social.stress=clamp(state.social.stress+2);state.trainedToday=false;state.actionsLeft=2;state.dayActions={training:false,social:false};state.daysToMatch=Math.max(0,state.daysToMatch-1);let pay="";if(state.day>=state.finances.nextPayDay){const income=Math.round(state.contract.salary/4),expense=1850;state.finances.balance+=income-expense;state.finances.nextPayDay+=7;state.logs.unshift({id:uid(),type:"finance",title:"Haftalık hesap özeti",detail:`Maaş +${money(income)} · Yaşam gideri -${money(expense)}`,date:"Bugün"});pay=` · Hesaba ${money(income-expense)} geçti`}toast=`Yeni gün başladı · 2 aksiyon hazır${pay}`;save();render()}
 function offerDecision(accept){const o=state.offer,c=club(o.clubId);if(accept){state.clubId=c.id;state.coachTrust=45;state.morale=clamp(state.morale+8);state.contract={salary:o.salary,yearsLeft:o.years,role:o.role};state.logs.unshift({id:uid(),type:"club",title:`${c.name} transferi tamamlandı`,detail:"Yeni bir şehir, yeni beklentiler ve yepyeni bir forma mücadelesi.",date:"Bugün"})}else{state.morale=clamp(state.morale+2);state.logs.unshift({id:uid(),type:"club",title:`${c.name} teklifi reddedildi`,detail:"Mevcut kulübünde gelişmeye devam etme kararı aldın.",date:"Bugün"})}state.offer=null;save();render()}
 
 document.addEventListener("input",e=>{if(e.target.id==="player-name"){draft.name=e.target.value;const b=document.querySelector('[data-action="next"]');if(b)b.disabled=!draft.name.trim()}});
@@ -254,6 +285,7 @@ document.addEventListener("click",e=>{
   else if(b.dataset.sheet){sheet=b.dataset.sheet;render()}
   else if(b.dataset.training)train(b.dataset.training);
   else if(b.dataset.social)socialAction(b.dataset.social);
+  else if(b.dataset.buy)buyItem(b.dataset.buy);
   else if(b.dataset.choice!==undefined)choose(Number(b.dataset.choice));
   else if(b.dataset.offer)offerDecision(b.dataset.offer==="accept");
   else if(b.dataset.action==="next"){creationStep++;renderCreation()}
@@ -261,6 +293,7 @@ document.addEventListener("click",e=>{
   else if(b.dataset.action==="create")createCareer();
   else if(b.dataset.action==="advance")advance();
   else if(b.dataset.action==="recover")recover();
+  else if(b.dataset.action==="use-recovery")useRecovery();
   else if(b.dataset.action==="open-match"){tab="match";toast="";render()}
   else if(b.dataset.action==="start-match")startMatch();
   else if(b.dataset.action==="finish-match")finishMatch();
