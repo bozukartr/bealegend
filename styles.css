@@ -34,3 +34,6 @@
 
 @media(max-width:850px){.phone{position:relative;overflow-x:hidden}.content{padding-top:12px}.day-screen{min-height:calc(100dvh - 158px)}.day-cta{position:fixed;left:14px;right:14px;bottom:calc(68px + env(safe-area-inset-bottom));padding-bottom:5px}.bottom-nav{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:420px){.day-hud{min-height:122px;padding:18px}.day-hud h1{font-size:30px}.day-actions button{min-height:76px;padding:10px;grid-template-columns:32px 1fr auto}.day-actions button>i{width:32px;height:32px}.day-actions button small{font-size:6.5px}.action-sheet{padding:19px 15px calc(18px + env(safe-area-inset-bottom))}.social-summary{grid-template-columns:96px 1fr;gap:15px}.game-toast{position:absolute;left:15px;right:15px;top:5px;z-index:5;box-shadow:0 10px 24px rgba(0,0,0,.35)}.game-toast+.day-hud{margin-top:48px}}
+
+/* Pre-Phase 3 content catalogue */
+.sheet-options{max-height:min(58vh,520px);overflow-y:auto}.shop-filters{margin:0 -2px 11px;padding:2px;display:flex;gap:6px;overflow-x:auto}.shop-filters button{padding:8px 10px;flex:0 0 auto;background:#0d100d;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:6px;font-weight:850;letter-spacing:.08em;cursor:pointer}.shop-filters button.active{background:var(--accent);border-color:var(--accent);color:#111}.shop-list{max-height:min(52vh,460px)}

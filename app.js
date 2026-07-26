@@ -6,7 +6,13 @@ const CLUBS = [
   { id:"ege", name:"Ege Atletik", short:"EGE", city:"İzmir", color:"#70e7ff", dark:"#101d22", level:65, dev:91, salary:11250, text:"Genç oyuncu fabrikası; düşük baskı, hızlı gelişim." },
   { id:"bosphorus", name:"Bosphorus FC", short:"BOS", city:"İstanbul", color:"#8e7dff", dark:"#17142a", level:76, dev:73, salary:21000, text:"Yıldızlarla dolu, şampiyonluk isteyen kulüp." },
   { id:"toros", name:"Toros Gücü", short:"TOR", city:"Adana", color:"#ffcf55", dark:"#241d0d", level:67, dev:70, salary:12800, text:"Fiziksel futbol ve ateşli taraftar." },
-  { id:"karadeniz", name:"Karadeniz Rovers", short:"KAR", city:"Trabzon", color:"#ff5f7d", dark:"#271117", level:71, dev:77, salary:15750, text:"Tutkulu şehir, yoğun tempo ve aidiyet." }
+  { id:"karadeniz", name:"Karadeniz Rovers", short:"KAR", city:"Trabzon", color:"#ff5f7d", dark:"#271117", level:71, dev:77, salary:15750, text:"Tutkulu şehir, yoğun tempo ve aidiyet." },
+  { id:"anadolu", name:"Anadolu Yıldızı", short:"ANY", city:"Eskişehir", color:"#e65cff", dark:"#231127", level:63, dev:88, salary:10400, text:"Genç kadro, cesur futbol ve güçlü akademi." },
+  { id:"akdeniz", name:"Akdeniz Spor", short:"AKD", city:"Antalya", color:"#56ffad", dark:"#10241b", level:66, dev:72, salary:12100, text:"Teknik futbol, rahat şehir ve dengeli beklenti." },
+  { id:"golden", name:"Golden Horn", short:"GLD", city:"İstanbul", color:"#ffc857", dark:"#261d0e", level:79, dev:78, salary:24800, text:"Büyük bütçe, yıldız baskısı ve Avrupa hedefi." },
+  { id:"kapadokya", name:"Kapadokya FK", short:"KAP", city:"Kayseri", color:"#ff835c", dark:"#27150f", level:64, dev:69, salary:10900, text:"Disiplinli yapı ve fizik gücüne dayalı oyun." },
+  { id:"trakya", name:"Trakya Birlik", short:"TRK", city:"Edirne", color:"#83a7ff", dark:"#11182a", level:62, dev:84, salary:9800, text:"Düşük baskı ve genç oyunculara uzun süre." },
+  { id:"mezopotamya", name:"Mezopotamya 21", short:"MEZ", city:"Diyarbakır", color:"#ff6e9f", dark:"#29111c", level:68, dev:76, salary:13400, text:"Yoğun taraftar desteği ve yüksek mücadele." }
 ];
 
 const POSITIONS = { ST:"Santrafor", LW:"Sol Kanat", RW:"Sağ Kanat", CAM:"10 Numara", CM:"Merkez", DM:"Ön Libero", LB:"Sol Bek", RB:"Sağ Bek", CB:"Stoper", GK:"Kaleci" };
@@ -21,16 +27,50 @@ const TRAINING = {
   technique:{ name:"Teknik", caption:"Kontrol, pas, oyun görüşü", icon:"◇", energy:15, morale:2, gains:{technique:.5,passing:.35,vision:.2} },
   physical:{ name:"Fizik", caption:"Hız, güç, dayanıklılık", icon:"↗", energy:24, morale:-1, gains:{pace:.35,strength:.4,stamina:.45} },
   tactical:{ name:"Taktik", caption:"Karar, görüş, savunma", icon:"⌘", energy:12, morale:0, gains:{decisions:.45,vision:.4,defending:.25} },
+  speed:{ name:"Sürat", caption:"Patlayıcılık, çeviklik", icon:"»", energy:22, morale:0, gains:{pace:.72,stamina:.18} },
+  strength:{ name:"Kuvvet", caption:"Temas, denge, dayanıklılık", icon:"⬡", energy:25, morale:-1, gains:{strength:.68,stamina:.24} },
+  setpiece:{ name:"Duran top", caption:"Şut, pas, soğukkanlılık", icon:"◎", energy:14, morale:2, gains:{shooting:.36,passing:.28,composure:.32} },
+  analysis:{ name:"Video analiz", caption:"Görüş, karar, taktik", icon:"▣", energy:7, morale:0, gains:{vision:.42,decisions:.55} },
   recovery:{ name:"Aktif dinlenme", caption:"Enerji, moral ve form", icon:"◌", energy:-30, morale:4, gains:{} }
 };
 const SHOP_ITEMS = {
-  recovery:{ name:"Recovery içeceği", category:"PERFORMANS", icon:"◌", price:280, repeatable:true, text:"Maç ve antrenman sonrası hızlı destek.", effect:"+18 enerji · -4 stres" },
-  boots:{ name:"Pro krampon", category:"EKİPMAN", icon:"↗", price:5400, text:"Daha iyi temas ve saha hissi.", effect:"+1 şut · +1 teknik" },
-  headphones:{ name:"ANC kulaklık", category:"YAŞAM", icon:"♫", price:3200, text:"Yolculuklarda zihnini oyundan uzaklaştır.", effect:"Stres -8 · moral +3" },
-  console:{ name:"Oyun konsolu", category:"YAŞAM", icon:"◇", price:18500, text:"Evdeki sosyal planı daha verimli yapar.", effect:"Oyun gecesi moral bonusu" },
-  watch:{ name:"Prestij saat", category:"LÜKS", icon:"⌁", price:62000, text:"Saha dışındaki imajını güçlendir.", effect:"+4 itibar · +3 moral" },
-  car:{ name:"Sportif otomobil", category:"LÜKS", icon:"➜", price:185000, text:"Yeni hayatının en görünür ödülü.", effect:"+9 itibar · +6 moral" }
+  recovery:{ name:"Recovery içeceği", category:"PERFORMANS", icon:"◌", price:280, repeatable:true, consumable:true, effect:"+18 enerji · -4 stres", effects:{energy:18,stress:-4} },
+  protein:{ name:"Protein paketi", category:"PERFORMANS", icon:"△", price:420, repeatable:true, consumable:true, effect:"+9 kondisyon · +5 enerji", effects:{fitness:9,energy:5} },
+  cryo:{ name:"Kriyo seansı", category:"PERFORMANS", icon:"❄", price:1250, repeatable:true, consumable:true, effect:"+16 enerji · +5 kondisyon", effects:{energy:16,fitness:5} },
+  boots:{ name:"Pro krampon", category:"EKİPMAN", icon:"↗", price:5400, effect:"+1 şut · +1 teknik", effects:{shooting:1,technique:1} },
+  eliteboots:{ name:"Elite krampon", category:"EKİPMAN", icon:"✦", price:16800, reputation:24, effect:"+2 hız · +1 teknik", effects:{pace:2,technique:1} },
+  gps:{ name:"GPS performans yeleği", category:"EKİPMAN", icon:"⌖", price:8900, effect:"Antrenmanda ek güven", effects:{} },
+  guards:{ name:"Karbon tekmelik", category:"EKİPMAN", icon:"⬢", price:3800, effect:"+1 savunma · +1 güç", effects:{defending:1,strength:1} },
+  headphones:{ name:"ANC kulaklık", category:"SAĞLIK", icon:"♫", price:3200, effect:"Stres -8 · moral +3", effects:{stress:-8,morale:3} },
+  sleepkit:{ name:"Uyku optimizasyon seti", category:"SAĞLIK", icon:"☾", price:7600, effect:"Her gün +4 enerji", effects:{} },
+  nutritionist:{ name:"Beslenme uzmanı", category:"SAĞLIK", icon:"＋", price:24000, reputation:18, effect:"Her gün +1 kondisyon", effects:{} },
+  homegym:{ name:"Ev spor salonu", category:"SAĞLIK", icon:"⬡", price:48000, reputation:28, effect:"Fizik çalışmalarında %10 bonus", effects:{} },
+  console:{ name:"Oyun konsolu", category:"YAŞAM", icon:"◇", price:18500, effect:"Oyun gecesinde ekstra moral", effects:{} },
+  sneakers:{ name:"Limitli sneaker", category:"YAŞAM", icon:"≈", price:9800, effect:"+2 moral · +1 itibar", effects:{morale:2,reputation:1} },
+  suit:{ name:"Özel dikim takım", category:"YAŞAM", icon:"♢", price:28500, reputation:20, effect:"+3 itibar · +2 moral", effects:{reputation:3,morale:2} },
+  watch:{ name:"Prestij saat", category:"LÜKS", icon:"⌁", price:62000, reputation:30, effect:"+4 itibar · +3 moral", effects:{reputation:4,morale:3} },
+  car:{ name:"Sportif otomobil", category:"LÜKS", icon:"➜", price:185000, reputation:45, effect:"+9 itibar · +6 moral", effects:{reputation:9,morale:6} },
+  penthouse:{ name:"Şehir rezidansı", category:"LÜKS", icon:"▥", price:420000, reputation:65, effect:"+14 itibar · aile bağı bonusu", effects:{reputation:14,family:5} }
 };
+const SHOP_CATEGORIES=["TÜMÜ","PERFORMANS","EKİPMAN","SAĞLIK","YAŞAM","LÜKS"];
+const SOCIAL_ACTIVITIES = {
+  family:{name:"Aileyle akşam",icon:"⌂",detail:"Aile +8 · Moral +5",energy:-8,morale:5,family:8,friends:0,stress:-4},
+  friends:{name:"Arkadaşlarla buluş",icon:"♧",detail:"Arkadaş +9 · Moral +7",energy:-14,morale:7,family:0,friends:9,stress:-5},
+  gaming:{name:"Evde oyun gecesi",icon:"◇",detail:"Düşük enerji · Stres azalır",energy:-4,morale:3,family:0,friends:2,stress:-7},
+  dinner:{name:"Takım yemeği",icon:"☼",detail:"Güven +2 · Moral +4",energy:-9,morale:4,family:0,friends:5,stress:-3,trust:2},
+  cinema:{name:"Sinema gecesi",icon:"▣",detail:"Moral +4 · Stres -6",energy:-6,morale:4,family:0,friends:2,stress:-6},
+  charity:{name:"Sosyal sorumluluk",icon:"♡",detail:"İtibar +3 · Moral +3",energy:-10,morale:3,family:1,friends:1,stress:-2,reputation:3},
+  alone:{name:"Kendine zaman ayır",icon:"☾",detail:"Stres -10 · Enerji +4",energy:4,morale:2,family:0,friends:0,stress:-10},
+  sponsor:{name:"Sponsor etkinliği",icon:"✦",detail:"İtibar +4 · Stres +3",energy:-12,morale:1,family:0,friends:1,stress:3,reputation:4,requires:25}
+};
+const BRIEFINGS=[
+  {title:"Geçişlerde merkez boşalıyor",text:"Topu kazandıktan sonraki ilk pasında risk almak hücum oyuncuları için daha yüksek ödül sağlayabilir.",tempo:"Yüksek",risk:"Orta"},
+  {title:"Savunma çizgisi ağır kalıyor",text:"Koşunu erken başlat. Özellikle ters kanattan ceza sahasına girişler rakibin dengesini bozuyor.",tempo:"Orta",risk:"Yüksek"},
+  {title:"Ön alan presi kırılgan",text:"İlk baskıyı tek pasla aşabilirsen geniş alanda sayısal üstünlük yakalama ihtimali artıyor.",tempo:"Yüksek",risk:"Yüksek"},
+  {title:"Duran toplarda adam paylaşımı zayıf",text:"Arka direğe hareketlenmek ve ikinci topu takip etmek bu maçın gizli fırsatı olabilir.",tempo:"Dengeli",risk:"Düşük"},
+  {title:"Bekler hücuma erken çıkıyor",text:"Top kaybı anında çizgi arkasına koşu, rakibin geniş savunma boşluğunu cezalandırabilir.",tempo:"Yüksek",risk:"Orta"},
+  {title:"Merkezde fizik üstünlüğü kuruyorlar",text:"Temastan kaçın, oyunu çabuk yön değiştirerek kur ve topu kanatlara erken aktar.",tempo:"Dengeli",risk:"Orta"}
+];
 
 let state = null;
 let tab = "today";
@@ -39,6 +79,7 @@ let draft = { name:"", age:17, position:"ST", foot:"Sağ", archetype:"finisher",
 let match = null;
 let sheet = null;
 let toast = "";
+let shopCategory = "TÜMÜ";
 
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,n));
 const club = id => CLUBS.find(c=>c.id===id) || CLUBS[0];
@@ -150,32 +191,43 @@ function renderSheet(){
     content=`<div class="sheet-options">${Object.entries(TRAINING).filter(([id])=>id!=="recovery").map(([id,t])=>`<button data-training="${id}" ${state.dayActions.training?"disabled":""}><i>${t.icon}</i><span><b>${t.name}</b><small>${t.caption}</small></span><em>-${t.energy} EN</em></button>`).join("")}</div>`;
   }else if(sheet==="social"){
     title="Sosyal plan";subtitle="Saha dışındaki seçimin moral ve ilişkilerini değiştirir.";
-    content=`<div class="sheet-options"><button data-social="family"><i>⌂</i><span><b>Aileyle vakit geçir</b><small>Aile +8 · Moral +5</small></span><em>-8 EN</em></button><button data-social="friends"><i>♧</i><span><b>Arkadaşlarla buluş</b><small>Arkadaş +9 · Moral +7</small></span><em>-14 EN</em></button><button data-social="gaming"><i>◇</i><span><b>Evde oyun gecesi</b><small>Stres -7 · Moral +3</small></span><em>-4 EN</em></button></div>`;
+    content=`<div class="sheet-options">${Object.entries(SOCIAL_ACTIVITIES).map(([id,a])=>{const locked=a.requires&&state.reputation<a.requires;return `<button data-social="${id}" ${locked?"disabled":""}><i>${a.icon}</i><span><b>${a.name}</b><small>${locked?`İtibar ${a.requires} gerekli`:a.detail}</small></span><em>${a.energy>0?"+":""}${a.energy} EN</em></button>`}).join("")}</div>`;
   }else if(sheet==="recovery"){
     title="Toparlanma";subtitle="Günün bir aksiyonunu vücuduna ve zihnine ayır.";
-    content=`<div class="recovery-focus"><i>◌</i><b>Aktif toparlanma</b><p>+30 enerji · -10 stres · +4 moral</p><button class="button primary wide" data-action="recover">Toparlanmayı başlat <span>1 AP</span></button>${state.inventory.recovery?`<button class="button secondary wide recovery-item" data-action="use-recovery">Recovery içeceği kullan <span>x${state.inventory.recovery}</span></button>`:""}</div>`;
+    const consumables=Object.entries(SHOP_ITEMS).filter(([id,item])=>item.consumable&&state.inventory[id]);
+    content=`<div class="recovery-focus"><i>◌</i><b>Aktif toparlanma</b><p>+30 enerji · -10 stres · +4 moral</p><button class="button primary wide" data-action="recover" ${state.actionsLeft<=0?"disabled":""}>Toparlanmayı başlat <span>1 AP</span></button>${consumables.map(([id,item])=>`<button class="button secondary wide recovery-item" data-use-item="${id}">${item.name} kullan <span>x${state.inventory[id]}</span></button>`).join("")}</div>`;
   }else if(sheet==="shop"){
     title="Mağaza";subtitle=`Bakiye ${money(state.finances.balance)} · Alışveriş aksiyon puanı harcamaz.`;
-    content=`<div class="shop-list">${Object.entries(SHOP_ITEMS).map(([id,item])=>{const owned=state.inventory[id]||0, sold=!item.repeatable&&owned;return `<button data-buy="${id}" ${sold||state.finances.balance<item.price?"disabled":""}><i>${item.icon}</i><span><small>${item.category}</small><b>${item.name}</b><p>${item.effect}</p></span><em>${sold?"ALINDI":money(item.price)}</em>${item.repeatable&&owned?`<strong>x${owned}</strong>`:""}</button>`}).join("")}</div>`;
+    const products=Object.entries(SHOP_ITEMS).filter(([,item])=>shopCategory==="TÜMÜ"||item.category===shopCategory);
+    content=`<div class="shop-filters">${SHOP_CATEGORIES.map(category=>`<button data-shop-category="${category}" class="${shopCategory===category?"active":""}">${category}</button>`).join("")}</div><div class="shop-list">${products.map(([id,item])=>{const owned=state.inventory[id]||0, sold=!item.repeatable&&owned, locked=item.reputation&&state.reputation<item.reputation, unavailable=sold||locked||state.finances.balance<item.price;return `<button data-buy="${id}" ${unavailable?"disabled":""}><i>${item.icon}</i><span><small>${item.category}</small><b>${item.name}</b><p>${locked?`İtibar ${item.reputation} gerekli`:item.effect}</p></span><em>${sold?"ALINDI":money(item.price)}</em>${item.repeatable&&owned?`<strong>x${owned}</strong>`:""}</button>`}).join("")}</div>`;
   }else{
+    const briefing=BRIEFINGS[(state.day+state.daysToMatch)%BRIEFINGS.length];
     title="Maç brifingi";subtitle=`${state.daysToMatch} gün sonra oynanacak maç için teknik ekip raporu.`;
-    content=`<div class="briefing-card"><span>RAKİP PLANI</span><h3>Geçişlerde merkez boşalıyor</h3><p>Topu kazandıktan sonraki ilk pasında risk almak hücum oyuncuları için daha yüksek ödül sağlayabilir. Savunmacılar çizgiyi erken terk etmemeli.</p><div><b>Tempo</b><em>Yüksek</em><b>Risk</b><em>Orta</em></div></div>`;
+    content=`<div class="briefing-card"><span>RAKİP PLANI</span><h3>${briefing.title}</h3><p>${briefing.text}</p><div><b>Tempo</b><em>${briefing.tempo}</em><b>Risk</b><em>${briefing.risk}</em></div></div>`;
   }
   return `<div class="sheet-backdrop" data-action="close-sheet"></div><section class="action-sheet"><header><div><span>GÜNLÜK AKSİYON</span><h2>${title}</h2><p>${subtitle}</p></div><button data-action="close-sheet" aria-label="Kapat">×</button></header>${content}</section>`;
 }
 
 function matchMoments(defensive){
   const atk=[
+    [11,"Ön direkte boşluk","Kanattan gelen sert top savunmanın önünden geçiyor. Tek dokunuşluk bir fırsat doğdu.",[["Ön direkte bitir","Refleks ve şut","shooting","composure",59,"goal"],["Topu arkaya aşır","Görüş ve teknik","vision","technique",55,"assist"],["Penaltı noktasına çıkar","Düşük riskli pas","passing","decisions",41,"assist"]]],
     [18,"Savunma çizgisi bozuldu","Topu sol iç koridorda aldın. Önünde bir stoper, sağında koşu yapan takım arkadaşın var.",[["Ara pası","Yüksek görüş, orta risk","vision","passing",58,"assist"],["İçeri kat et","Tekniğine güven","technique","pace",64,"goal"],["Topu sakla","Güvenli, takım odaklı","strength","decisions",38,"assist"]]],
+    [37,"İkinci top önünde","Rakip ceza sahası dışında topu uzaklaştıramadı. Şut yolu açık fakat takım arkadaşların da hareketli.",[["Uzaktan vur","Şut ve soğukkanlılık","shooting","composure",63,"goal"],["Kanada aktar","Pas ve görüş","passing","vision",44,"assist"],["Teması al","Güç ve karar","strength","decisions",52,"goal"]]],
     [54,"Ceza sahasında yarım metre","Orta sekti ve top önüne düştü. Kaleci açıyı kapatıyor, savunma yaklaşıyor.",[["Köşeye sert vur","Şut gücü ve teknik","shooting","technique",57,"goal"],["Kaleciyi bekle","Soğukkanlı ama riskli","composure","decisions",66,"goal"],["Geriden gelene bırak","Akıllı ve düşük risk","vision","passing",42,"assist"]]],
-    [83,"Son bölüm, skor dengede","Rakip yoruldu. Çizgide boşluk var fakat top kaybı kontra atağa dönüşebilir.",[["Boşluğa patla","Enerji ve hız testi","pace","stamina",61,"goal"],["Duvar pası","Takım oyunu","passing","decisions",49,"assist"],["Tempoyu düşür","Skoru ve topu koru","decisions","composure",34,"assist"]]]
+    [71,"Kaleciyle karşı karşıya","Savunma arkasına sarktın. Kaleci hızla çıkıyor, arkadan baskı yaklaşıyor.",[["Aşırtma dene","Teknik ve soğukkanlılık","technique","composure",68,"goal"],["Kaleciyi geç","Hız ve teknik","pace","technique",64,"goal"],["Yanındakine bırak","Garantici asist","vision","passing",45,"assist"]]],
+    [86,"Son bölüm, skor dengede","Rakip yoruldu. Çizgide boşluk var fakat top kaybı kontra atağa dönüşebilir.",[["Boşluğa patla","Enerji ve hız testi","pace","stamina",61,"goal"],["Duvar pası","Takım oyunu","passing","decisions",49,"assist"],["Tempoyu düşür","Skoru ve topu koru","decisions","composure",34,"assist"]]]
   ];
   const def=[
+    [9,"Erken baskı altında","Rakip forvet sırtı dönük top aldı. Orta saha henüz yerleşmedi ve temas mesafesindesin.",[["Sert karşıla","Güç ve savunma","strength","defending",55,"defend"],["Pas kanalını kapat","Karar ve görüş","decisions","vision",43,"defend"],["Geri çekil","Hız ve pozisyon","pace","decisions",38,"defend"]]],
     [21,"Rakip geçişe çıktı","Forvet hızla üzerine geliyor. Arkanda geniş alan, yanında kademe var.",[["Öne çık","Topu erken kazan","defending","decisions",61,"defend"],["Geciktir","Alanı daralt","decisions","pace",43,"defend"],["Teması kur","Fiziksel müdahale","strength","defending",55,"defend"]]],
+    [42,"Ceza yayı karıştı","Seken top iki rakibin arasında kaldı. Bir anlık tereddüt şut fırsatı yaratabilir.",[["Topa hamle yap","Savunma ve hız","defending","pace",58,"defend"],["Alanı süpür","Karar ve görüş","decisions","vision",46,"defend"],["Rakibi perdele","Güç ve soğukkanlılık","strength","composure",49,"defend"]]],
     [59,"Tehlikeli yan top","Top arka direğe süzülüyor. Rakibin koşusu güçlü, kaleci kararsız.",[["Topa saldır","Güçlü ve kararlı","strength","defending",54,"defend"],["Adamı takip et","Pozisyon disiplini","decisions","stamina",42,"defend"],["Topu indir ve çık","Riskli kontra","technique","vision",68,"assist"]]],
+    [74,"Çizgide ikiye bir","Rakip kanatta sayısal üstünlük kurdu. Ortayı engellemek ile koşuyu takip etmek arasında karar vermelisin.",[["Top sahibine bas","Hız ve savunma","pace","defending",61,"defend"],["Koşuyu devral","Karar ve dayanıklılık","decisions","stamina",45,"defend"],["Ortayı blokla","Savunma ve soğukkanlılık","defending","composure",50,"defend"]]],
     [87,"Son savunma","Ceza yayı üzerinde şut açısı doğdu. Müdahalen sonucu belirleyebilir.",[["Şut kanalını kapat","Güvenli savunma","defending","composure",46,"defend"],["Kayarak müdahale","Yüksek risk, büyük ödül","defending","decisions",69,"defend"],["Şuta zorla","Ayakta kal","pace","stamina",51,"defend"]]]
   ];
-  return (defensive?def:atk).map(x=>({minute:x[0],title:x[1],description:x[2],choices:x[3].map((c,i)=>({id:i,label:c[0],detail:c[1],primary:c[2],secondary:c[3],risk:c[4],kind:c[5]}))}));
+  const pool=[...(defensive?def:atk)], selected=[];
+  while(selected.length<3)selected.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  return selected.sort((a,b)=>a[0]-b[0]).map(x=>({minute:x[0],title:x[1],description:x[2],choices:x[3].map((c,i)=>({id:i,label:c[0],detail:c[1],primary:c[2],secondary:c[3],risk:c[4],kind:c[5]}))}));
 }
 
 function startMatch(){
@@ -238,39 +290,46 @@ function render(){
 
 function train(id){
   if(state.dayActions.training||state.actionsLeft<=0)return;const t=TRAINING[id],c=club(state.clubId),a=state.player.attributes;
-  Object.entries(t.gains).forEach(([k,g])=>a[k]=clamp(Number((a[k]+g*c.dev/75).toFixed(2))));
-  state.energy=clamp(state.energy-t.energy);state.morale=clamp(state.morale+t.morale);state.fitness=clamp(state.fitness-t.energy*.08);state.coachTrust=clamp(state.coachTrust+1.6);state.xp+=14;state.trainedToday=true;state.dayActions.training=true;state.actionsLeft--;state.player.overall=overall(a,state.player.position);state.logs.unshift({id:uid(),type:"training",title:`${t.name} tamamlandı`,detail:"Teknik ekip çalışma disiplininden memnun.",date:"Bugün"});sheet=null;tab="today";toast=`${t.name} tamamlandı · +14 XP`;save();render();
+  const homeBonus=state.inventory.homegym&&["physical","speed","strength"].includes(id)?1.1:1;
+  Object.entries(t.gains).forEach(([k,g])=>a[k]=clamp(Number((a[k]+g*c.dev/75*homeBonus).toFixed(2))));
+  state.energy=clamp(state.energy-t.energy);state.morale=clamp(state.morale+t.morale);state.fitness=clamp(state.fitness-t.energy*.08);state.coachTrust=clamp(state.coachTrust+1.6+(state.inventory.gps?.4:0));state.xp+=14;state.trainedToday=true;state.dayActions.training=true;state.actionsLeft--;state.player.overall=overall(a,state.player.position);state.logs.unshift({id:uid(),type:"training",title:`${t.name} tamamlandı`,detail:"Teknik ekip çalışma disiplininden memnun.",date:"Bugün"});sheet=null;tab="today";toast=`${t.name} tamamlandı · +14 XP`;save();render();
+}
+function applyEffects(effects={}){
+  const a=state.player.attributes;
+  Object.entries(effects).forEach(([key,value])=>{
+    if(key==="stress"||key==="family"||key==="friends")state.social[key]=clamp(state.social[key]+value);
+    else if(key==="reputation")state.reputation=clamp(state.reputation+value);
+    else if(key==="trust")state.coachTrust=clamp(state.coachTrust+value);
+    else if(key in a)a[key]=clamp(a[key]+value);
+    else if(key in state)state[key]=clamp(state[key]+value);
+  });
+  state.player.overall=overall(a,state.player.position);
 }
 function socialAction(id){
   if(state.dayActions.social||state.actionsLeft<=0)return;
-  const effects={
-    family:{energy:-8,morale:5,family:8,friends:0,stress:-4,label:"Aileyle güzel bir akşam"},
-    friends:{energy:-14,morale:7,family:0,friends:9,stress:-5,label:"Arkadaşlarla buluşma"},
-    gaming:{energy:-4,morale:state.inventory.console?6:3,family:0,friends:2,stress:state.inventory.console?-10:-7,label:"Evde oyun gecesi"}
-  }[id];
-  state.energy=clamp(state.energy+effects.energy);state.morale=clamp(state.morale+effects.morale);state.social.family=clamp(state.social.family+effects.family);state.social.friends=clamp(state.social.friends+effects.friends);state.social.stress=clamp(state.social.stress+effects.stress);state.dayActions.social=true;state.actionsLeft--;state.logs.unshift({id:uid(),type:"social",title:effects.label,detail:`Moral +${effects.morale} · Stres ${effects.stress}`,date:"Bugün"});sheet=null;tab="today";toast=`${effects.label} · Moral +${effects.morale}`;save();render();
+  const activity=SOCIAL_ACTIVITIES[id];if(!activity||(activity.requires&&state.reputation<activity.requires))return;
+  const effects={energy:activity.energy,morale:activity.morale,family:activity.family,friends:activity.friends,stress:activity.stress,trust:activity.trust||0,reputation:activity.reputation||0};
+  if(id==="gaming"&&state.inventory.console){effects.morale+=3;effects.stress-=3}
+  if(id==="family"&&state.inventory.penthouse)effects.family+=3;
+  applyEffects(effects);state.dayActions.social=true;state.actionsLeft--;state.logs.unshift({id:uid(),type:"social",title:activity.name,detail:`Moral ${effects.morale>=0?"+":""}${effects.morale} · Stres ${effects.stress}`,date:"Bugün"});sheet=null;tab="today";toast=`${activity.name} · Moral +${effects.morale}`;save();render();
 }
 function buyItem(id){
-  const item=SHOP_ITEMS[id];if(!item||state.finances.balance<item.price||(!item.repeatable&&state.inventory[id]))return;
+  const item=SHOP_ITEMS[id];if(!item||state.finances.balance<item.price||(!item.repeatable&&state.inventory[id])||(item.reputation&&state.reputation<item.reputation))return;
   state.finances.balance-=item.price;state.finances.totalSpent+=item.price;state.inventory[id]=(state.inventory[id]||0)+1;
-  if(id==="boots"){state.player.attributes.shooting=clamp(state.player.attributes.shooting+1);state.player.attributes.technique=clamp(state.player.attributes.technique+1);state.player.overall=overall(state.player.attributes,state.player.position)}
-  if(id==="headphones"){state.social.stress=clamp(state.social.stress-8);state.morale=clamp(state.morale+3)}
-  if(id==="watch"){state.reputation=clamp(state.reputation+4);state.morale=clamp(state.morale+3)}
-  if(id==="car"){state.reputation=clamp(state.reputation+9);state.morale=clamp(state.morale+6)}
+  if(!item.consumable)applyEffects(item.effects);
   state.logs.unshift({id:uid(),type:"shopping",title:`${item.name} satın alındı`,detail:`${money(item.price)} · ${item.effect}`,date:"Bugün"});
   toast=`${item.name} satın alındı`;save();render();
 }
-function useRecovery(){
-  if(!state.inventory.recovery)return;
-  state.inventory.recovery--;if(!state.inventory.recovery)delete state.inventory.recovery;
-  state.energy=clamp(state.energy+18);state.social.stress=clamp(state.social.stress-4);
-  sheet=null;tab="today";toast="Recovery içeceği kullanıldı · Enerji +18";save();render();
+function useItem(id){
+  const item=SHOP_ITEMS[id];if(!item?.consumable||!state.inventory[id])return;
+  state.inventory[id]--;if(!state.inventory[id])delete state.inventory[id];
+  applyEffects(item.effects);sheet=null;tab="today";toast=`${item.name} kullanıldı · ${item.effect}`;save();render();
 }
 function recover(){
   if(state.actionsLeft<=0)return;
   state.energy=clamp(state.energy+30);state.morale=clamp(state.morale+4);state.fitness=clamp(state.fitness+4);state.social.stress=clamp(state.social.stress-10);state.actionsLeft--;state.logs.unshift({id:uid(),type:"training",title:"Aktif toparlanma tamamlandı",detail:"Enerji +30 · Stres -10",date:"Bugün"});sheet=null;tab="today";toast="Vücudun ve zihnin toparlandı";save();render();
 }
-function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2);state.social.stress=clamp(state.social.stress+2);state.trainedToday=false;state.actionsLeft=2;state.dayActions={training:false,social:false};state.daysToMatch=Math.max(0,state.daysToMatch-1);let pay="";if(state.day>=state.finances.nextPayDay){const income=Math.round(state.contract.salary/4),expense=1850;state.finances.balance+=income-expense;state.finances.nextPayDay+=7;state.logs.unshift({id:uid(),type:"finance",title:"Haftalık hesap özeti",detail:`Maaş +${money(income)} · Yaşam gideri -${money(expense)}`,date:"Bugün"});pay=` · Hesaba ${money(income-expense)} geçti`}toast=`Yeni gün başladı · 2 aksiyon hazır${pay}`;save();render()}
+function advance(){if(state.daysToMatch===0)return;state.day++;state.date=`${17+state.day} Ağustos 2026`;state.energy=clamp(state.energy+(state.trainedToday?13:20)+(state.inventory.sleepkit?4:0));state.morale=clamp(state.morale+(state.energy<35?-2:1));state.fitness=clamp(state.fitness+2+(state.inventory.nutritionist?1:0));state.social.stress=clamp(state.social.stress+2);state.trainedToday=false;state.actionsLeft=2;state.dayActions={training:false,social:false};state.daysToMatch=Math.max(0,state.daysToMatch-1);let pay="";if(state.day>=state.finances.nextPayDay){const income=Math.round(state.contract.salary/4),expense=1850;state.finances.balance+=income-expense;state.finances.nextPayDay+=7;state.logs.unshift({id:uid(),type:"finance",title:"Haftalık hesap özeti",detail:`Maaş +${money(income)} · Yaşam gideri -${money(expense)}`,date:"Bugün"});pay=` · Hesaba ${money(income-expense)} geçti`}toast=`Yeni gün başladı · 2 aksiyon hazır${pay}`;save();render()}
 function offerDecision(accept){const o=state.offer,c=club(o.clubId);if(accept){state.clubId=c.id;state.coachTrust=45;state.morale=clamp(state.morale+8);state.contract={salary:o.salary,yearsLeft:o.years,role:o.role};state.logs.unshift({id:uid(),type:"club",title:`${c.name} transferi tamamlandı`,detail:"Yeni bir şehir, yeni beklentiler ve yepyeni bir forma mücadelesi.",date:"Bugün"})}else{state.morale=clamp(state.morale+2);state.logs.unshift({id:uid(),type:"club",title:`${c.name} teklifi reddedildi`,detail:"Mevcut kulübünde gelişmeye devam etme kararı aldın.",date:"Bugün"})}state.offer=null;save();render()}
 
 document.addEventListener("input",e=>{if(e.target.id==="player-name"){draft.name=e.target.value;const b=document.querySelector('[data-action="next"]');if(b)b.disabled=!draft.name.trim()}});
@@ -285,7 +344,9 @@ document.addEventListener("click",e=>{
   else if(b.dataset.sheet){sheet=b.dataset.sheet;render()}
   else if(b.dataset.training)train(b.dataset.training);
   else if(b.dataset.social)socialAction(b.dataset.social);
+  else if(b.dataset.shopCategory){shopCategory=b.dataset.shopCategory;render()}
   else if(b.dataset.buy)buyItem(b.dataset.buy);
+  else if(b.dataset.useItem)useItem(b.dataset.useItem);
   else if(b.dataset.choice!==undefined)choose(Number(b.dataset.choice));
   else if(b.dataset.offer)offerDecision(b.dataset.offer==="accept");
   else if(b.dataset.action==="next"){creationStep++;renderCreation()}
@@ -293,7 +354,6 @@ document.addEventListener("click",e=>{
   else if(b.dataset.action==="create")createCareer();
   else if(b.dataset.action==="advance")advance();
   else if(b.dataset.action==="recover")recover();
-  else if(b.dataset.action==="use-recovery")useRecovery();
   else if(b.dataset.action==="open-match"){tab="match";toast="";render()}
   else if(b.dataset.action==="start-match")startMatch();
   else if(b.dataset.action==="finish-match")finishMatch();
