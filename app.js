@@ -86,6 +86,9 @@ let match = null;
 let sheet = null;
 let toast = "";
 let shopCategory = "TÜMÜ";
+let matchEngine = null;
+let pixiPromise = null;
+let engineMountToken = 0;
 
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,n));
 const club = id => CLUBS.find(c=>c.id===id) || CLUBS[0];
@@ -119,6 +122,42 @@ const weekDays = () => {
   });
 };
 const haptic = pattern => {if(typeof navigator!=="undefined"&&navigator.vibrate)navigator.vibrate(pattern||12)};
+const loadPixi = () => {
+  if(window.PIXI)return Promise.resolve(window.PIXI);
+  if(pixiPromise)return pixiPromise;
+  pixiPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");script.src="vendor/pixi.min.js";script.async=true;
+    script.onload=()=>resolve(window.PIXI);script.onerror=()=>reject(new Error("PixiJS yüklenemedi"));
+    document.head.appendChild(script);
+  });
+  return pixiPromise;
+};
+function destroyMatchEngine(){
+  engineMountToken++;
+  if(matchEngine){matchEngine.destroy();matchEngine=null}
+}
+async function mountMatchEngine(){
+  const host=document.querySelector("#match-engine");
+  if(!host||!match||match.completed)return;
+  const token=++engineMountToken,moment=match.moments[match.index];
+  try{
+    await loadPixi();
+    if(token!==engineMountToken||!document.querySelector("#match-engine"))return;
+    matchEngine=new window.Match2DEngine(host,{
+      momentIndex:match.index,
+      choices:moment.choices,
+      onPreview:index=>document.querySelectorAll("[data-choice]").forEach((button,buttonIndex)=>button.classList.toggle("previewing",buttonIndex===index))
+    });
+    await matchEngine.init();
+    document.querySelectorAll("[data-choice]").forEach((button,index)=>{
+      button.addEventListener("pointerenter",()=>matchEngine?.preview(index));
+      button.addEventListener("focus",()=>matchEngine?.preview(index));
+      button.addEventListener("touchstart",()=>matchEngine?.preview(index),{passive:true});
+    });
+  }catch(error){
+    if(token===engineMountToken)host.innerHTML=`<div class="engine-error"><b>2D saha başlatılamadı</b><span>Kararlarını aşağıdaki panelden vermeye devam edebilirsin.</span></div>`;
+  }
+}
 
 function overall(a,pos){
   const avg = keys => keys.reduce((s,k)=>s+a[k],0)/keys.length;
@@ -307,11 +346,11 @@ function finishMatch(){
 
 function renderMatch(){
   if(state.daysToMatch>0&&!match)return `<div class="stack">${heading("MAÇ MERKEZİ",`Sıradaki sınav <em>${state.daysToMatch} gün sonra.</em>`,"Hazırlığını tamamla. Maç günü geldiğinde kritik anları sen yöneteceksin.")}<section class="locked-match">${mark(state.clubId)}<span>HAZIRLANIYOR</span><b>${club(state.clubId).name}</b><p>Enerji ${Math.round(state.energy)} · Form ${Math.round(state.form)} · ${squad()}</p></section></div>`;
-  if(!match)return `<div class="stack"><section class="match-day"><span>MAÇ GÜNÜ</span><h1>90 dakika.<br><em>Üç büyük karar.</em></h1><p>Seçimlerin özelliklerin, kondisyonun ve risk seviyesiyle hesaplanır.</p><button class="button primary wide" data-action="start-match">Sahaya çık <span>→</span></button></section><section class="selection"><div><span>KADRO DURUMU</span><b>${squad()}</b></div><div><span>TEKNİK DİREKTÖR GÜVENİ</span><b>%${Math.round(state.coachTrust)}</b></div></section></div>`;
+  if(!match)return `<div class="match-command"><section><span>MAÇ GÜNÜ · 20:45</span><h1>Hazırsın.<br><em>Sahne senin.</em></h1><p>Üç kritik pozisyon. Her rota özelliklerin, enerjin ve seçtiğin risk üzerinden çözülecek.</p><div class="match-command-stats"><div><small>KADRO</small><b>${squad()}</b></div><div><small>ENERJİ</small><b>${Math.round(state.energy)}</b></div><div><small>FORM</small><b>${Math.round(state.form)}</b></div></div><button class="button primary wide" data-action="start-match">MAÇI BAŞLAT <span>→</span></button></section></div>`;
   const c=club(state.clubId),o=club(match.opponentId);
-  if(match.completed)return `<div class="stack"><section class="result"><span>MAÇ SONU</span><div><aside>${mark(c.id)}<b>${c.short}</b></aside><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><aside>${mark(o.id)}<b>${o.short}</b></aside></div><small>MAÇ PUANI</small><em>${match.rating.toFixed(1)}</em></section><section class="match-stats"><div><span>Gol</span><b>${match.goals}</b></div><div><span>Asist</span><b>${match.assists}</b></div><div><span>Kritik karar</span><b>3</b></div></section><section class="event-log">${match.events.map(e=>`<p>${e}</p>`).join("")}</section><button class="button primary wide" data-action="finish-match">Soyunma odasına dön <span>→</span></button></div>`;
+  if(match.completed)return `<div class="compact-result"><section class="result"><span>MAÇ SONU</span><div><aside>${mark(c.id)}<b>${c.short}</b></aside><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><aside>${mark(o.id)}<b>${o.short}</b></aside></div><small>MAÇ PUANI</small><em>${match.rating.toFixed(1)}</em></section><section class="match-stats"><div><span>Gol</span><b>${match.goals}</b></div><div><span>Asist</span><b>${match.assists}</b></div><div><span>Kritik karar</span><b>3</b></div></section><section class="event-log">${match.events.map(e=>`<p>${e}</p>`).join("")}</section><button class="button primary wide" data-action="finish-match">SOYUNMA ODASINA DÖN <span>→</span></button></div>`;
   const m=match.moments[match.index];
-  return `<div class="stack"><section class="scoreboard"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor} – ${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><span>${m.minute}'</span></section><div class="pitch"><span>SEN</span><b>●</b><i></i><i></i><i></i></div><section class="panel moment"><span>KRİTİK AN · ${match.index+1}/3</span><h2>${m.title}</h2><p>${m.description}</p><div class="actions choices">${m.choices.map((x,i)=>`<button data-choice="${i}"><span><b>${x.label}</b><small>${x.detail}</small></span><em>RİSK ${x.risk}</em><strong>→</strong></button>`).join("")}</div></section><div class="live-rating"><span>CANLI PUAN</span><b>${match.rating.toFixed(1)}</b></div></div>`;
+  return `<div class="match-live"><section class="match-scorebar"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>CANLI</em></section><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>WEBGL SAHA HAZIRLANIYOR</span></div></div><div class="stage-hud"><span>${m.minute}'</span><b>${match.rating.toFixed(1)}<small>PUAN</small></b></div></section><section class="match-decision"><header><span>KRİTİK AN ${match.index+1}/3</span><em>Rotaya dokun · sahada önizle</em></header><h2>${m.title}</h2><p>${m.description}</p><div class="decision-grid">${m.choices.map((choice,index)=>`<button data-choice="${index}"><i>0${index+1}</i><span><b>${choice.label}</b><small>${choice.detail}</small></span><em style="--risk:${choice.risk}%"><small>RİSK ${choice.risk}</small><i><b></b></i></em></button>`).join("")}</div></section></div>`;
 }
 
 function renderCareer(){
@@ -329,11 +368,13 @@ function renderPlayer(){
 }
 
 function render(){
+  destroyMatchEngine();
   if(!state){renderCreation();return}
   migrate();
   const c=club(state.clubId);document.documentElement.style.setProperty("--accent","#6D9C79");
   const screen=tab==="today"?renderToday():tab==="match"?renderMatch():tab==="career"?renderCareer():tab==="social"?renderSocial():renderPlayer();
-  document.querySelector("#app").innerHTML=`<main class="game-shell"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 4 · PLAYER EXPERIENCE</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}${renderSheet()}</section></main>`;
+  document.querySelector("#app").innerHTML=`<main class="game-shell ${tab==="match"?"match-mode":""}"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 4 · PLAYER EXPERIENCE</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}${renderSheet()}</section></main>`;
+  if(tab==="match"&&match&&!match.completed)queueMicrotask(mountMatchEngine);
 }
 
 function train(id){
