@@ -51,6 +51,18 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - Overall kartından açılan gelişim, XP ve güçlü özellikler paneli
 - Desteklenen cihazlarda önemli aksiyonlar için hafif dokunsal geri bildirim
 
+### Profesyonel maç deneyimi
+
+- Yalnızca canlı maç ekranında çalışan PixiJS 8.19 tabanlı 2D oyun motoru
+- WebGL 2 öncelikli, GPU hızlandırmalı taktik saha
+- Animasyonlu oyuncular, top, saha çizgileri ve aktif oyuncu vurgusu
+- Karar üzerine gelince veya dokununca sahada rota önizlemesi
+- Risk seviyesine göre renk değiştiren koşu ve pas yolları
+- Kompakt canlı skor, dakika ve maç puanı HUD'ı
+- Mobil maç sırasında dikkat dağıtan ana navigasyonu gizleyen odak modu
+- Motor yüklenemezse karar sistemini kullanılabilir tutan güvenli geri dönüş
+- PixiJS çalışma zamanı ve lisansı repoya sabitlenmiştir
+
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
 
