@@ -21,6 +21,10 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - Aile, arkadaşlar, moral ve stres ilişkileri
 - Sosyal plan, toparlanma ve maç brifingi aksiyonları
 - Dört bölümlü sadeleştirilmiş mobil navigasyon
+- Cüzdan, haftalık maaş ve otomatik yaşam giderleri
+- Ekipman, performans, yaşam ve lüks kategorili mobil mağaza
+- Oyuncu özelliklerine, morale, strese ve itibara etki eden satın alımlar
+- Kullanılabilir recovery ürünleri ve kalıcı eşya envanteri
 
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
