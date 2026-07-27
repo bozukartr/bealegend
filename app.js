@@ -88,6 +88,7 @@ let toast = "";
 let shopCategory = "TÜMÜ";
 let matchEngine = null;
 let pixiPromise = null;
+let matterPromise = null;
 let engineMountToken = 0;
 
 const clamp = (n,min=0,max=100) => Math.max(min,Math.min(max,n));
@@ -132,6 +133,16 @@ const loadPixi = () => {
   });
   return pixiPromise;
 };
+const loadMatter = () => {
+  if(window.Matter)return Promise.resolve(window.Matter);
+  if(matterPromise)return matterPromise;
+  matterPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");script.src="vendor/matter.min.js";script.async=true;
+    script.onload=()=>resolve(window.Matter);script.onerror=()=>reject(new Error("Matter.js yüklenemedi"));
+    document.head.appendChild(script);
+  });
+  return matterPromise;
+};
 function destroyMatchEngine(){
   engineMountToken++;
   if(matchEngine){matchEngine.destroy();matchEngine=null}
@@ -141,25 +152,21 @@ async function mountMatchEngine(){
   if(!host||!match||match.completed)return;
   const token=++engineMountToken,moment=match.moments[match.index];
   try{
-    await loadPixi();
+    await Promise.all([loadPixi(),loadMatter()]);
     if(token!==engineMountToken||!document.querySelector("#match-engine"))return;
     matchEngine=new window.Match2DEngine(host,{
       momentIndex:match.index,
-      choices:moment.choices,
-      onPreview:index=>document.querySelectorAll("[data-tactic]").forEach((button,buttonIndex)=>button.classList.toggle("previewing",buttonIndex===index)),
+      mode:moment.mode,
+      skill:moment.mode==="shot"?state.player.attributes.shooting:moment.mode==="pass"?state.player.attributes.passing:state.player.attributes.defending,
+      energy:state.energy,
       onMode:message=>{const prompt=document.querySelector(".interaction-prompt");if(prompt)prompt.textContent=message},
-      onResolve:index=>resolveChoice(index),
+      onResolve:interaction=>resolveInteractiveMoment(interaction),
       onComplete:()=>{if(match)match.resolving=false;render()}
     });
     await matchEngine.init();
-    document.querySelectorAll("[data-tactic]").forEach((button,index)=>{
-      button.addEventListener("pointerenter",()=>matchEngine?.preview(index));
-      button.addEventListener("focus",()=>matchEngine?.preview(index));
-      button.addEventListener("touchstart",()=>matchEngine?.preview(index),{passive:true});
-    });
   }catch(error){
     matchEngine=null;
-    if(token===engineMountToken)host.innerHTML=`<div class="engine-error"><b>2D saha başlatılamadı</b><span>Kararını aşağıdaki panelden verebilirsin.</span></div>`;
+    if(token===engineMountToken)host.innerHTML=`<div class="engine-error"><b>Fizik sahası başlatılamadı</b><span>Bu sekansı güvenli modda tamamlayabilirsin.</span><button data-action="fallback-sequence">SEKANSI TAMAMLA</button></div>`;
   }
 }
 
@@ -317,7 +324,7 @@ function matchMoments(defensive){
   ];
   const pool=[...(defensive?def:atk)], selected=[];
   while(selected.length<3)selected.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
-  return selected.sort((a,b)=>a[0]-b[0]).map(x=>({minute:x[0],title:x[1],description:x[2],choices:x[3].map((c,i)=>({id:i,label:c[0],detail:c[1],primary:c[2],secondary:c[3],risk:c[4],kind:c[5]}))}));
+  return selected.sort((a,b)=>a[0]-b[0]).map((x,index)=>({minute:x[0],title:x[1],description:x[2],mode:defensive?"defend":index%2===0?"shot":"pass",choices:x[3].map((c,i)=>({id:i,label:c[0],detail:c[1],primary:c[2],secondary:c[3],risk:c[4],kind:c[5]}))}));
 }
 
 function startMatch(){
@@ -326,29 +333,31 @@ function startMatch(){
   render();
 }
 
-function resolveChoice(choiceIndex){
+function resolveInteractiveMoment(interaction){
   if(!match||match.resolving)return null;
   match.resolving=true;
-  const moment=match.moments[match.index], c=moment.choices[choiceIndex], a=state.player.attributes;
-  const skill=a[c.primary]*.62+a[c.secondary]*.28+state.energy*.12+state.form*.08+state.morale*.05, roll=Math.random()*100, success=roll+skill*.5>c.risk+29;
-  let event,outcome="success";
-  if(success){
-    match.rating+=.65;
-    if(c.kind==="goal"&&Math.random()>.38){match.scoreFor++;match.goals++;match.rating+=.55;outcome="goal";event=`${moment.minute}' GOL! Kararın kusursuz sonuç verdi.`}
-    else if(c.kind==="assist"&&Math.random()>.38){match.scoreFor++;match.assists++;match.rating+=.35;outcome="assist";event=`${moment.minute}' Asist! Hücum senin kararınla sonuçlandı.`}
-    else {outcome=c.kind==="defend"?"defend":"success";event=`${moment.minute}' Doğru karar; pozisyonu takımın lehine çevirdin.`}
-  } else {
-    match.rating-=c.risk>60?.38:.22;outcome="miss";
-    if(c.kind==="defend"&&Math.random()>.5){match.scoreAgainst++;match.rating-=.35;outcome="conceded";event=`${moment.minute}' Müdahale geç kaldı ve rakip cezayı kesti.`}
-    else event=`${moment.minute}' Fikir doğruydu ama uygulama başarısız.`;
+  const moment=match.moments[match.index],success=Boolean(interaction.success),quality=clamp(interaction.quality||0,0,1);
+  let event,outcome=success?"success":"miss";
+  if(moment.mode==="shot"&&success){match.scoreFor++;match.goals++;match.rating+=1.1+quality*.25;outcome="goal";event=`${moment.minute}' GOL! Sling şutun kaleciyi geçti.`}
+  else if(moment.mode==="pass"&&success){
+    match.rating+=.65+quality*.3;
+    if(quality>.58){match.scoreFor++;match.assists++;outcome="assist";event=`${moment.minute}' ASİST! Pasın savunmayı tamamen yardı.`}
+    else {outcome="success";event=`${moment.minute}' Pas hedefini buldu ve hücum devam etti.`}
+  }
+  else if(moment.mode==="defend"&&success){match.rating+=.75+quality*.25;outcome="defend";event=`${moment.minute}' MÜDAHALE! Doğru noktada topu kazandın.`}
+  else {
+    match.rating-=.28+(1-quality)*.2;
+    if(moment.mode==="defend"){match.scoreAgainst++;match.rating-=.25;outcome="conceded";event=`${moment.minute}' Müdahale yetişmedi ve rakip golü buldu.`}
+    else event=`${moment.minute}' ${moment.mode==="shot"?"Şut hedefi bulmadı.":"Pas yolu rakip tarafından kesildi."}`;
   }
   match.rating=clamp(Number(match.rating.toFixed(1)),4,10);match.events.push(event);match.index++;match.completed=match.index>=match.moments.length;if(match.completed&&Math.random()>.55)match.scoreAgainst++;
-  return {success,outcome,event,kind:c.kind,minute:moment.minute};
+  return {success,outcome,event,kind:moment.mode,minute:moment.minute};
 }
-function selectTactic(choiceIndex){
+function fallbackSequence(){
   if(!match||match.resolving)return;
-  if(matchEngine){matchEngine.setTactic(choiceIndex);haptic(8);return}
-  const outcome=resolveChoice(choiceIndex);if(outcome){match.resolving=false;render()}
+  const moment=match.moments[match.index],attribute=moment.mode==="shot"?state.player.attributes.shooting:moment.mode==="pass"?state.player.attributes.passing:state.player.attributes.defending;
+  const quality=clamp((attribute+state.energy*.25+state.form*.2)/125,0,1),outcome=resolveInteractiveMoment({success:quality>.52,quality});
+  if(outcome){match.resolving=false;render()}
 }
 
 function finishMatch(){
@@ -366,7 +375,8 @@ function renderMatch(){
   const c=club(state.clubId),o=club(match.opponentId);
   if(match.completed)return `<div class="compact-result"><section class="result"><span>MAÇ SONU</span><div><aside>${mark(c.id)}<b>${c.short}</b></aside><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><aside>${mark(o.id)}<b>${o.short}</b></aside></div><small>MAÇ PUANI</small><em>${match.rating.toFixed(1)}</em></section><section class="match-stats"><div><span>Gol</span><b>${match.goals}</b></div><div><span>Asist</span><b>${match.assists}</b></div><div><span>Kritik karar</span><b>3</b></div></section><section class="event-log">${match.events.map(e=>`<p>${e}</p>`).join("")}</section><button class="button primary wide" data-action="finish-match">SOYUNMA ODASINA DÖN <span>→</span></button></div>`;
   const m=match.moments[match.index];
-  return `<div class="match-live"><section class="match-scorebar"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>CANLI</em></section><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>WEBGL SAHA HAZIRLANIYOR</span></div></div><div class="stage-hud"><span>${m.minute}'</span><b>${match.rating.toFixed(1)}<small>PUAN</small></b></div><div class="interaction-prompt">Önce aşağıdan taktiğini seç</div></section><section class="match-decision"><header><span>KRİTİK AN ${match.index+1}/3</span><em>Taktik seç → sahada uygula</em></header><h2>${m.title}</h2><p>${m.description}</p><div class="decision-grid">${m.choices.map((choice,index)=>`<button data-tactic="${index}"><i>0${index+1}</i><span><b>${choice.label}</b><small>${choice.detail}</small></span><em style="--risk:${choice.risk}%"><small>RİSK ${choice.risk}</small><i><b></b></i></em></button>`).join("")}</div></section></div>`;
+  const modeLabel={shot:"ŞUT SEKANSI",pass:"PAS SEKANSI",defend:"SAVUNMA SEKANSI"}[m.mode];
+  return `<div class="match-live match-fullscreen"><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>FİZİK SAHASI HAZIRLANIYOR</span></div></div><header class="fullscreen-score"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>${m.minute}'</em></header><div class="sequence-context"><span>${modeLabel} · ${match.index+1}/3</span><b>${m.title}</b><p>${m.description}</p></div><div class="rating-pill">${match.rating.toFixed(1)}<small>PUAN</small></div><div class="interaction-prompt">${m.mode==="shot"?"Topu geriye çek ve kaleye bırak":m.mode==="pass"?"Topu geriye çek ve takım arkadaşına bırak":"Oyuncuyu geriye çek ve müdahaleye bırak"}</div></section></div>`;
 }
 
 function renderCareer(){
@@ -389,7 +399,7 @@ function render(){
   migrate();
   const c=club(state.clubId);document.documentElement.style.setProperty("--accent","#6D9C79");
   const screen=tab==="today"?renderToday():tab==="match"?renderMatch():tab==="career"?renderCareer():tab==="social"?renderSocial():renderPlayer();
-  document.querySelector("#app").innerHTML=`<main class="game-shell ${tab==="match"?"match-mode":""}"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 4 · PLAYER EXPERIENCE</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}${renderSheet()}</section></main>`;
+  document.querySelector("#app").innerHTML=`<main class="game-shell ${tab==="match"?"match-mode":""} ${tab==="match"&&match&&!match.completed?"active-match-mode":""}"><aside class="rail"><h1>BE A<br><em>LEGEND</em></h1><p>Futbolcu kariyer simülasyonu</p><div class="rail-player">${mark(c.id)}<span><b>${esc(state.player.name)}</b><small>${c.name}</small></span></div>${nav()}<small>FAZ 4 · PLAYER EXPERIENCE</small></aside><section class="phone">${topbar()}<div class="content">${screen}</div>${nav(true)}${renderSheet()}</section></main>`;
   if(tab==="match"&&match&&!match.completed)queueMicrotask(mountMatchEngine);
 }
 
@@ -459,7 +469,6 @@ document.addEventListener("click",e=>{
   else if(b.dataset.shopCategory){shopCategory=b.dataset.shopCategory;render()}
   else if(b.dataset.buy)buyItem(b.dataset.buy);
   else if(b.dataset.useItem)useItem(b.dataset.useItem);
-  else if(b.dataset.tactic!==undefined)selectTactic(Number(b.dataset.tactic));
   else if(b.dataset.offer)offerDecision(b.dataset.offer==="accept");
   else if(b.dataset.action==="next"){creationStep++;renderCreation()}
   else if(b.dataset.action==="back"){creationStep--;renderCreation()}
@@ -469,6 +478,7 @@ document.addEventListener("click",e=>{
   else if(b.dataset.action==="open-match"){tab="match";toast="";render()}
   else if(b.dataset.action==="start-match")startMatch();
   else if(b.dataset.action==="finish-match")finishMatch();
+  else if(b.dataset.action==="fallback-sequence")fallbackSequence();
   else if(b.dataset.action==="reset"&&confirm("Mevcut kariyer silinsin mi?")){localStorage.removeItem(SAVE_KEY);state=null;tab="today";creationStep=1;render()}
 });
 
