@@ -376,7 +376,9 @@ function renderMatch(){
   if(match.completed)return `<div class="compact-result"><section class="result"><span>MAÇ SONU</span><div><aside>${mark(c.id)}<b>${c.short}</b></aside><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><aside>${mark(o.id)}<b>${o.short}</b></aside></div><small>MAÇ PUANI</small><em>${match.rating.toFixed(1)}</em></section><section class="match-stats"><div><span>Gol</span><b>${match.goals}</b></div><div><span>Asist</span><b>${match.assists}</b></div><div><span>Kritik karar</span><b>3</b></div></section><section class="event-log">${match.events.map(e=>`<p>${e}</p>`).join("")}</section><button class="button primary wide" data-action="finish-match">SOYUNMA ODASINA DÖN <span>→</span></button></div>`;
   const m=match.moments[match.index];
   const modeLabel={shot:"ŞUT SEKANSI",pass:"PAS SEKANSI",defend:"SAVUNMA SEKANSI"}[m.mode];
-  return `<div class="match-live match-fullscreen"><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>FİZİK SAHASI HAZIRLANIYOR</span></div></div><header class="fullscreen-score"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>${m.minute}'</em></header><div class="sequence-context"><span>${modeLabel} · ${match.index+1}/3</span><b>${m.title}</b><p>${m.description}</p></div><div class="rating-pill">${match.rating.toFixed(1)}<small>PUAN</small></div><div class="interaction-prompt">${m.mode==="shot"?"Topu geriye çek ve kaleye bırak":m.mode==="pass"?"Topu geriye çek ve takım arkadaşına bırak":"Oyuncuyu geriye çek ve müdahaleye bırak"}</div></section></div>`;
+  const actionLabel={shot:"ŞUT",pass:"PAS",defend:"MÜDAHALE"}[m.mode],actionIcon={shot:"◉",pass:"➜",defend:"◆"}[m.mode];
+  const actionText=m.mode==="shot"?"Topa dokun, geriye çek ve kaleye bırak":m.mode==="pass"?"Topa dokun, geriye çek ve hedefe bırak":"Oyuncuya dokun, geriye çek ve topa bırak";
+  return `<div class="match-live match-fullscreen"><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>FİZİK SAHASI HAZIRLANIYOR</span></div></div><header class="sequence-card"><i>${actionIcon}</i><div><span>${modeLabel} · ${match.index+1}/3</span><b>${m.title}</b><p>${m.mode==="shot"?"Kaleye şut çek!":m.mode==="pass"?"Pas kanalını bul!":"Topu geri kazan!"}</p><footer>${[0,1,2].map(index=>`<em class="${index<match.index?"done":index===match.index?"active":""}">${index+1}</em>`).join("")}<small>${c.short} ${match.scoreFor}–${match.scoreAgainst} ${o.short} · ${m.minute}'</small></footer></div></header><div class="rating-pill">${match.rating.toFixed(1)}<small>PUAN</small></div><div class="action-coach"><i>${actionIcon}</i><b>${actionLabel}</b><span class="interaction-prompt">${actionText}</span></div><footer class="engine-footer"><span>LIVE <i></i> PHYSICS</span><button type="button" data-action="pause-match" aria-label="Maçı duraklat">Ⅱ</button></footer></section></div>`;
 }
 
 function renderCareer(){
@@ -477,6 +479,7 @@ document.addEventListener("click",e=>{
   else if(b.dataset.action==="recover")recover();
   else if(b.dataset.action==="open-match"){tab="match";toast="";render()}
   else if(b.dataset.action==="start-match")startMatch();
+  else if(b.dataset.action==="pause-match"&&matchEngine){const paused=matchEngine.togglePause();b.classList.toggle("paused",paused);b.textContent=paused?"▶":"Ⅱ"}
   else if(b.dataset.action==="finish-match")finishMatch();
   else if(b.dataset.action==="fallback-sequence")fallbackSequence();
   else if(b.dataset.action==="reset"&&confirm("Mevcut kariyer silinsin mi?")){localStorage.removeItem(SAVE_KEY);state=null;tab="today";creationStep=1;render()}
