@@ -146,16 +146,20 @@ async function mountMatchEngine(){
     matchEngine=new window.Match2DEngine(host,{
       momentIndex:match.index,
       choices:moment.choices,
-      onPreview:index=>document.querySelectorAll("[data-choice]").forEach((button,buttonIndex)=>button.classList.toggle("previewing",buttonIndex===index))
+      onPreview:index=>document.querySelectorAll("[data-tactic]").forEach((button,buttonIndex)=>button.classList.toggle("previewing",buttonIndex===index)),
+      onMode:message=>{const prompt=document.querySelector(".interaction-prompt");if(prompt)prompt.textContent=message},
+      onResolve:index=>resolveChoice(index),
+      onComplete:()=>{if(match)match.resolving=false;render()}
     });
     await matchEngine.init();
-    document.querySelectorAll("[data-choice]").forEach((button,index)=>{
+    document.querySelectorAll("[data-tactic]").forEach((button,index)=>{
       button.addEventListener("pointerenter",()=>matchEngine?.preview(index));
       button.addEventListener("focus",()=>matchEngine?.preview(index));
       button.addEventListener("touchstart",()=>matchEngine?.preview(index),{passive:true});
     });
   }catch(error){
-    if(token===engineMountToken)host.innerHTML=`<div class="engine-error"><b>2D saha başlatılamadı</b><span>Kararlarını aşağıdaki panelden vermeye devam edebilirsin.</span></div>`;
+    matchEngine=null;
+    if(token===engineMountToken)host.innerHTML=`<div class="engine-error"><b>2D saha başlatılamadı</b><span>Kararını aşağıdaki panelden verebilirsin.</span></div>`;
   }
 }
 
@@ -322,17 +326,29 @@ function startMatch(){
   render();
 }
 
-function choose(choiceIndex){
+function resolveChoice(choiceIndex){
+  if(!match||match.resolving)return null;
+  match.resolving=true;
   const moment=match.moments[match.index], c=moment.choices[choiceIndex], a=state.player.attributes;
   const skill=a[c.primary]*.62+a[c.secondary]*.28+state.energy*.12+state.form*.08+state.morale*.05, roll=Math.random()*100, success=roll+skill*.5>c.risk+29;
-  let event;
+  let event,outcome="success";
   if(success){
     match.rating+=.65;
-    if(c.kind==="goal"&&Math.random()>.38){match.scoreFor++;match.goals++;match.rating+=.55;event=`${moment.minute}' GOL! Kararın kusursuz sonuç verdi.`}
-    else if(c.kind==="assist"&&Math.random()>.38){match.scoreFor++;match.assists++;match.rating+=.35;event=`${moment.minute}' Asist! Hücum senin kararınla sonuçlandı.`}
-    else event=`${moment.minute}' Doğru karar; pozisyonu takımın lehine çevirdin.`;
-  } else {match.rating-=c.risk>60?.38:.22;if(c.kind==="defend"&&Math.random()>.5){match.scoreAgainst++;match.rating-=.35;event=`${moment.minute}' Müdahale geç kaldı ve rakip cezayı kesti.`}else event=`${moment.minute}' Fikir doğruydu ama uygulama başarısız.`}
-  match.rating=clamp(Number(match.rating.toFixed(1)),4,10);match.events.push(event);match.index++;match.completed=match.index>=match.moments.length;if(match.completed&&Math.random()>.55)match.scoreAgainst++;render();
+    if(c.kind==="goal"&&Math.random()>.38){match.scoreFor++;match.goals++;match.rating+=.55;outcome="goal";event=`${moment.minute}' GOL! Kararın kusursuz sonuç verdi.`}
+    else if(c.kind==="assist"&&Math.random()>.38){match.scoreFor++;match.assists++;match.rating+=.35;outcome="assist";event=`${moment.minute}' Asist! Hücum senin kararınla sonuçlandı.`}
+    else {outcome=c.kind==="defend"?"defend":"success";event=`${moment.minute}' Doğru karar; pozisyonu takımın lehine çevirdin.`}
+  } else {
+    match.rating-=c.risk>60?.38:.22;outcome="miss";
+    if(c.kind==="defend"&&Math.random()>.5){match.scoreAgainst++;match.rating-=.35;outcome="conceded";event=`${moment.minute}' Müdahale geç kaldı ve rakip cezayı kesti.`}
+    else event=`${moment.minute}' Fikir doğruydu ama uygulama başarısız.`;
+  }
+  match.rating=clamp(Number(match.rating.toFixed(1)),4,10);match.events.push(event);match.index++;match.completed=match.index>=match.moments.length;if(match.completed&&Math.random()>.55)match.scoreAgainst++;
+  return {success,outcome,event,kind:c.kind,minute:moment.minute};
+}
+function selectTactic(choiceIndex){
+  if(!match||match.resolving)return;
+  if(matchEngine){matchEngine.setTactic(choiceIndex);haptic(8);return}
+  const outcome=resolveChoice(choiceIndex);if(outcome){match.resolving=false;render()}
 }
 
 function finishMatch(){
@@ -350,7 +366,7 @@ function renderMatch(){
   const c=club(state.clubId),o=club(match.opponentId);
   if(match.completed)return `<div class="compact-result"><section class="result"><span>MAÇ SONU</span><div><aside>${mark(c.id)}<b>${c.short}</b></aside><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><aside>${mark(o.id)}<b>${o.short}</b></aside></div><small>MAÇ PUANI</small><em>${match.rating.toFixed(1)}</em></section><section class="match-stats"><div><span>Gol</span><b>${match.goals}</b></div><div><span>Asist</span><b>${match.assists}</b></div><div><span>Kritik karar</span><b>3</b></div></section><section class="event-log">${match.events.map(e=>`<p>${e}</p>`).join("")}</section><button class="button primary wide" data-action="finish-match">SOYUNMA ODASINA DÖN <span>→</span></button></div>`;
   const m=match.moments[match.index];
-  return `<div class="match-live"><section class="match-scorebar"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>CANLI</em></section><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>WEBGL SAHA HAZIRLANIYOR</span></div></div><div class="stage-hud"><span>${m.minute}'</span><b>${match.rating.toFixed(1)}<small>PUAN</small></b></div></section><section class="match-decision"><header><span>KRİTİK AN ${match.index+1}/3</span><em>Rotaya dokun · sahada önizle</em></header><h2>${m.title}</h2><p>${m.description}</p><div class="decision-grid">${m.choices.map((choice,index)=>`<button data-choice="${index}"><i>0${index+1}</i><span><b>${choice.label}</b><small>${choice.detail}</small></span><em style="--risk:${choice.risk}%"><small>RİSK ${choice.risk}</small><i><b></b></i></em></button>`).join("")}</div></section></div>`;
+  return `<div class="match-live"><section class="match-scorebar"><div>${mark(c.id,true)}<b>${c.short}</b></div><strong>${match.scoreFor}<i>–</i>${match.scoreAgainst}</strong><div>${mark(o.id,true)}<b>${o.short}</b></div><em>CANLI</em></section><section class="match-stage"><div id="match-engine"><div class="engine-status"><i></i><span>WEBGL SAHA HAZIRLANIYOR</span></div></div><div class="stage-hud"><span>${m.minute}'</span><b>${match.rating.toFixed(1)}<small>PUAN</small></b></div><div class="interaction-prompt">Önce aşağıdan taktiğini seç</div></section><section class="match-decision"><header><span>KRİTİK AN ${match.index+1}/3</span><em>Taktik seç → sahada uygula</em></header><h2>${m.title}</h2><p>${m.description}</p><div class="decision-grid">${m.choices.map((choice,index)=>`<button data-tactic="${index}"><i>0${index+1}</i><span><b>${choice.label}</b><small>${choice.detail}</small></span><em style="--risk:${choice.risk}%"><small>RİSK ${choice.risk}</small><i><b></b></i></em></button>`).join("")}</div></section></div>`;
 }
 
 function renderCareer(){
@@ -443,7 +459,7 @@ document.addEventListener("click",e=>{
   else if(b.dataset.shopCategory){shopCategory=b.dataset.shopCategory;render()}
   else if(b.dataset.buy)buyItem(b.dataset.buy);
   else if(b.dataset.useItem)useItem(b.dataset.useItem);
-  else if(b.dataset.choice!==undefined)choose(Number(b.dataset.choice));
+  else if(b.dataset.tactic!==undefined)selectTactic(Number(b.dataset.tactic));
   else if(b.dataset.offer)offerDecision(b.dataset.offer==="accept");
   else if(b.dataset.action==="next"){creationStep++;renderCreation()}
   else if(b.dataset.action==="back"){creationStep--;renderCreation()}
