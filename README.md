@@ -63,6 +63,17 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 - Motor yüklenemezse karar sistemini kullanılabilir tutan güvenli geri dönüş
 - PixiJS çalışma zamanı ve lisansı repoya sabitlenmiştir
 
+### Faz 5 — Doğrudan saha etkileşimi
+
+- Karar kartı önce taktik seçer; sonucu artık doğrudan üretmez
+- Pas tercihlerinde takım arkadaşı sahadan dokunularak seçilir
+- Şut tercihlerinde topun üzerinden kaleye doğru sürükleme yapılır
+- Savunma tercihlerinde müdahale bölgesi sahadan belirlenir
+- Top ve aktif oyuncu seçilen hedefe gerçek zamanlı hareket eder
+- Sonuç hesaplandıktan sonra gol, asist, müdahale veya başarısızlık sahada gösterilir
+- Animasyon tamamlanmadan sonraki kritik ana geçilmez
+- WebGL motoru kullanılamazsa tek dokunuşlu HTML karar akışı korunur
+
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
 
