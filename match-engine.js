@@ -11,12 +11,15 @@
       this.actor = null;
       this.goalkeeper = null;
       this.guide = null;
+      this.route = null;
+      this.targetMarker = null;
       this.overlay = null;
       this.anchor = null;
       this.dragPoint = null;
       this.dragging = false;
       this.released = false;
       this.resolved = false;
+      this.paused = false;
       this.destroyed = false;
       this.elapsed = 0;
       this.releaseElapsed = 0;
@@ -69,6 +72,7 @@
       this.released = false;
       this.resolved = false;
       this.dragging = false;
+      this.paused = false;
       this.releaseElapsed = 0;
       this.bodies = [];
       this.visuals = [];
@@ -79,148 +83,202 @@
       Events.on(this.physics, "collisionStart", this.collisionHandler);
 
       this.drawPitch();
+      this.route = new window.PIXI.Graphics();
+      this.app.stage.addChild(this.route);
       this.guide = new window.PIXI.Graphics();
       this.app.stage.addChild(this.guide);
       if (this.scene.mode === "shot") this.buildShot();
       else if (this.scene.mode === "pass") this.buildPass();
       else this.buildDefence();
+      this.drawAimRoute();
       this.drawInstructions();
       this.enableSling();
       this.syncVisuals();
     }
 
     drawPitch() {
-      const { Graphics, Text } = window.PIXI;
+      const { Graphics } = window.PIXI;
       const width = this.width, height = this.height;
-      const pitch = new Graphics().rect(0, 0, width, height).fill(0x234d31);
-      const stripeWidth = width / 10;
-      for (let index = 0; index < 10; index++) {
-        pitch.rect(index * stripeWidth, 0, stripeWidth, height)
-          .fill({ color: index % 2 ? 0x2a5938 : 0x326342, alpha: .62 });
+      const horizon = height * .115;
+      const stadium = new Graphics().rect(0, 0, width, horizon + 35).fill(0x08100b);
+      for (let index = 0; index < 90; index++) {
+        const x = (index * 47) % width, y = 8 + ((index * 29) % Math.max(30, horizon - 10));
+        const colors = [0xd9e4dc, 0x9fc3b0, 0xd5a26f, 0x5d7565];
+        stadium.circle(x, y, 1 + index % 2).fill({ color: colors[index % colors.length], alpha: .18 + index % 3 * .06 });
       }
-      const inset = Math.max(16, Math.min(width, height) * .035);
-      pitch.rect(inset, inset, width - inset * 2, height - inset * 2)
-        .stroke({ width: 2, color: 0xe3eee5, alpha: .53 });
-      pitch.moveTo(width / 2, inset).lineTo(width / 2, height - inset)
-        .stroke({ width: 1.5, color: 0xe3eee5, alpha: .4 });
-      pitch.circle(width / 2, height / 2, Math.min(width, height) * .12)
-        .stroke({ width: 1.5, color: 0xe3eee5, alpha: .4 });
-      pitch.circle(width / 2, height / 2, 3).fill({ color: 0xe3eee5, alpha: .5 });
-      const boxW = width * .15, boxH = height * .5;
-      pitch.rect(inset, (height - boxH) / 2, boxW, boxH)
-        .stroke({ width: 1.5, color: 0xe3eee5, alpha: .42 });
-      pitch.rect(width - inset - boxW, (height - boxH) / 2, boxW, boxH)
-        .stroke({ width: 1.5, color: 0xe3eee5, alpha: .42 });
-      this.app.stage.addChild(pitch);
+      stadium.rect(0, horizon - 6, width, 22).fill(0x102019);
+      stadium.rect(0, horizon + 2, width, 4).fill(0x6D9C79);
+      this.app.stage.addChild(stadium);
 
-      const live = new Text({
-        text: "LIVE · PHYSICS 2D",
-        style: { fontFamily: "Arial", fontSize: 9, fontWeight: "800", fill: 0xdce8df, letterSpacing: 1.5 }
+      const pitch = new Graphics();
+      const leftAt = y => {
+        const t = Math.max(0, Math.min(1, (y - horizon) / (height - horizon)));
+        return width * (.16 - .2 * t);
+      };
+      const rightAt = y => width - leftAt(y);
+      pitch.poly([leftAt(horizon), horizon, rightAt(horizon), horizon, rightAt(height), height, leftAt(height), height]).fill(0x2d603c);
+      const bands = 9;
+      for (let index = 0; index < bands; index++) {
+        const y1 = horizon + (height - horizon) * index / bands;
+        const y2 = horizon + (height - horizon) * (index + 1) / bands;
+        pitch.poly([leftAt(y1), y1, rightAt(y1), y1, rightAt(y2), y2, leftAt(y2), y2])
+          .fill({ color: index % 2 ? 0x3e754c : 0x326842, alpha: .54 });
+      }
+      pitch.moveTo(leftAt(horizon), horizon).lineTo(leftAt(height), height)
+        .moveTo(rightAt(horizon), horizon).lineTo(rightAt(height), height)
+        .stroke({ width: 2, color: 0xe7eee8, alpha: .5 });
+      [height * .37, height * .69].forEach(y => {
+        pitch.moveTo(leftAt(y), y).lineTo(rightAt(y), y).stroke({ width: 2, color: 0xe7eee8, alpha: .42 });
       });
-      live.x = inset + 10;
-      live.y = height - inset - 23;
-      live.alpha = .7;
-      this.app.stage.addChild(live);
+      const boxY = height * .2, boxBottom = height * .41;
+      pitch.moveTo(width * .17, boxY).lineTo(width * .83, boxY)
+        .lineTo(width * .91, boxBottom).lineTo(width * .09, boxBottom)
+        .stroke({ width: 2, color: 0xe7eee8, alpha: .5 });
+      pitch.moveTo(width * .32, boxY).lineTo(width * .28, height * .29)
+        .lineTo(width * .72, height * .29).lineTo(width * .68, boxY)
+        .stroke({ width: 1.5, color: 0xe7eee8, alpha: .4 });
+      pitch.ellipse(width / 2, boxBottom, width * .16, height * .055)
+        .stroke({ width: 1.5, color: 0xe7eee8, alpha: .35 });
+      this.app.stage.addChild(pitch);
     }
 
     buildShot() {
       const width = this.width, height = this.height;
-      const goalX = width - Math.max(24, width * .035);
-      const goalTop = height * .3, goalBottom = height * .7;
-      this.drawGoal(goalX, goalTop, goalBottom);
-      this.ball = this.circleBody(width * .28, height * .58, this.ballRadius(), {
+      const goalY = height * .245, goalLeft = width * .26, goalRight = width * .74;
+      this.drawGoal(goalY, goalLeft, goalRight);
+      this.ball = this.circleBody(width * .43, height * .705, this.ballRadius(), {
         label: "ball", restitution: .7, frictionAir: .014, isStatic: true
       }, 0xf4f0e4, 0x17241c);
-      this.actor = this.playerBody(width * .22, height * .63, 0x9fc3b0, "actor", true, true);
-      this.goalkeeper = this.playerBody(width * .86, height * .5, 0xe6b77f, "goalkeeper", true, false, 11);
-      this.addStaticPlayer(width * .55, height * .42, 0xc8956a, "defender");
-      this.addStaticPlayer(width * .66, height * .65, 0xc8956a, "defender");
-      this.sensorBody(goalX - 10, height * .5, 18, goalBottom - goalTop - 12, "goal");
+      this.actor = this.playerBody(width * .39, height * .72, 0xf1f3ef, "actor", true, true, 13, 10);
+      this.goalkeeper = this.playerBody(width * .5, height * .285, 0x38b578, "goalkeeper", true, false, 11, 1);
+      this.addStaticPlayer(width * .58, height * .47, 0xd76f35, "defender", 4);
+      this.addStaticPlayer(width * .72, height * .585, 0xd76f35, "defender", 6);
+      this.addStaticPlayer(width * .58, height * .735, 0xd76f35, "defender", 8);
+      this.sensorBody(width * .5, goalY + 2, goalRight - goalLeft - 18, 16, "goal");
       this.anchor = { x: this.ball.position.x, y: this.ball.position.y };
-      this.target = { x: goalX - 8, y: height * .5 };
+      this.target = { x: width * .66, y: goalY + 2 };
       this.scene.onMode?.("ŞUT · Topa dokun, geriye çek ve kaleye bırak");
     }
 
     buildPass() {
       const width = this.width, height = this.height;
-      this.ball = this.circleBody(width * .24, height * .63, this.ballRadius(), {
+      this.ball = this.circleBody(width * .42, height * .71, this.ballRadius(), {
         label: "ball", restitution: .58, frictionAir: .02, isStatic: true
       }, 0xf4f0e4, 0x17241c);
-      this.actor = this.playerBody(width * .19, height * .68, 0x9fc3b0, "actor", true, true);
-      const targetX = width * .8, targetY = height * .34;
-      this.playerBody(targetX, targetY, 0xdce8df, "teammate", true, false);
-      this.addStaticPlayer(width * .5, height * .43, 0xc8956a, "defender");
-      this.addStaticPlayer(width * .62, height * .58, 0xc8956a, "defender");
-      this.addStaticPlayer(width * .69, height * .27, 0xc8956a, "defender");
-      this.sensorBody(targetX, targetY, Math.max(52, width * .075), Math.max(52, height * .14), "pass-target", true);
+      this.actor = this.playerBody(width * .38, height * .73, 0xf1f3ef, "actor", true, true, 13, 10);
+      const targetX = width * .67, targetY = height * .39;
+      this.playerBody(targetX, targetY, 0xf1f3ef, "teammate", true, false, 11, 7);
+      this.addStaticPlayer(width * .49, height * .48, 0xd76f35, "defender", 5);
+      this.addStaticPlayer(width * .65, height * .58, 0xd76f35, "defender", 4);
+      this.addStaticPlayer(width * .29, height * .42, 0xd76f35, "defender", 3);
+      this.sensorBody(targetX, targetY, Math.max(48, width * .13), Math.max(44, height * .065), "pass-target", true);
       this.anchor = { x: this.ball.position.x, y: this.ball.position.y };
       this.target = { x: targetX, y: targetY };
-      this.drawTarget(targetX, targetY, "PAS ALANI");
+      this.drawTarget(targetX, targetY, "HEDEF");
       this.scene.onMode?.("PAS · Topa dokun, geriye çek ve hedef bölgeye bırak");
     }
 
     buildDefence() {
       const { Body } = window.Matter;
       const width = this.width, height = this.height;
-      this.actor = this.playerBody(width * .28, height * .68, 0x9fc3b0, "actor", false, true);
-      this.ball = this.circleBody(width * .72, height * .34, this.ballRadius(), {
+      this.actor = this.playerBody(width * .38, height * .69, 0xf1f3ef, "actor", false, true, 13, 10);
+      this.ball = this.circleBody(width * .62, height * .39, this.ballRadius(), {
         label: "ball", restitution: .52, frictionAir: .005
       }, 0xf4f0e4, 0x17241c);
-      this.playerBody(width * .76, height * .31, 0xc8956a, "opponent", true, false);
-      this.addStaticPlayer(width * .48, height * .48, 0xc8956a, "screen");
-      this.sensorBody(width * .08, height * .5, 18, height * .66, "concede");
+      this.playerBody(width * .66, height * .36, 0xd76f35, "opponent", true, false, 11, 9);
+      this.addStaticPlayer(width * .54, height * .53, 0xd76f35, "screen", 6);
+      this.sensorBody(width * .5, height * .84, width * .82, 18, "concede");
       this.anchor = { x: this.actor.position.x, y: this.actor.position.y };
       this.target = { x: this.ball.position.x, y: this.ball.position.y };
-      Body.setVelocity(this.ball, { x: -3.1, y: 1.05 });
+      Body.setVelocity(this.ball, { x: -.65, y: 2.35 });
       this.scene.onMode?.("MÜDAHALE · Oyuncuyu geriye çek ve topun yoluna bırak");
     }
 
-    drawGoal(x, top, bottom) {
+    drawGoal(y, left, right) {
       const goal = new window.PIXI.Graphics();
-      const depth = Math.max(20, this.width * .025);
-      goal.moveTo(x, top).lineTo(x + depth, top + 8).lineTo(x + depth, bottom - 8).lineTo(x, bottom)
-        .stroke({ width: 3, color: 0xf1f3eb, alpha: .9 });
-      for (let y = top + 12; y < bottom; y += 16) {
-        goal.moveTo(x, y).lineTo(x + depth, y).stroke({ width: 1, color: 0xf1f3eb, alpha: .25 });
+      const depth = Math.max(24, this.height * .038);
+      goal.moveTo(left, y).lineTo(left + 12, y - depth).lineTo(right - 12, y - depth).lineTo(right, y)
+        .lineTo(left, y).stroke({ width: 3, color: 0xf1f3eb, alpha: .95 });
+      for (let x = left + 10; x < right; x += Math.max(12, this.width * .035)) {
+        goal.moveTo(x, y).lineTo(Math.max(left + 12, x - 4), y - depth)
+          .stroke({ width: 1, color: 0xf1f3eb, alpha: .32 });
+      }
+      for (let row = 1; row < 4; row++) {
+        const lineY = y - depth * row / 4;
+        goal.moveTo(left + 12 * row / 4, lineY).lineTo(right - 12 * row / 4, lineY)
+          .stroke({ width: 1, color: 0xf1f3eb, alpha: .28 });
       }
       this.app.stage.addChild(goal);
-      this.staticRect(x, top, 7, 14, "post");
-      this.staticRect(x, bottom, 7, 14, "post");
+      this.staticRect(left, y, 9, 15, "post");
+      this.staticRect(right, y, 9, 15, "post");
     }
 
     drawTarget(x, y, label) {
       const { Graphics, Text } = window.PIXI;
-      const ring = new Graphics().circle(x, y, Math.max(29, Math.min(this.width, this.height) * .07))
-        .fill({ color: 0x9fc3b0, alpha: .08 })
-        .stroke({ width: 2, color: 0xbcd7c2, alpha: .66 });
+      const radius = Math.max(24, Math.min(this.width, this.height) * .065);
+      const ring = new Graphics().circle(x, y, radius)
+        .fill({ color: 0x8bff68, alpha: .07 })
+        .stroke({ width: 2.5, color: 0x9cff73, alpha: .78 })
+        .circle(x, y, radius * .47)
+        .stroke({ width: 2, color: 0xe9ffe2, alpha: .82 });
       const text = new Text({
         text: label,
-        style: { fontFamily: "Arial", fontSize: 8, fontWeight: "800", fill: 0xdce8df, letterSpacing: 1.2 }
+        style: { fontFamily: "Arial", fontSize: 8, fontWeight: "900", fill: 0xeaffe2, letterSpacing: 1.2 }
       });
       text.anchor.set(.5);
       text.x = x;
-      text.y = y + Math.max(38, Math.min(this.width, this.height) * .085);
+      text.y = y - radius - 14;
       this.app.stage.addChild(ring, text);
+      this.targetMarker = ring;
+    }
+
+    drawAimRoute() {
+      if (!this.route || !this.anchor || !this.target) return;
+      const start = this.scene.mode === "defend" ? this.actor.position : this.ball.position;
+      const bend = this.scene.mode === "shot" ? this.width * .08 : -this.width * .045;
+      const midY = (start.y + this.target.y) / 2;
+      this.route.clear()
+        .moveTo(start.x, start.y)
+        .bezierCurveTo(start.x + bend, midY + this.height * .07, this.target.x - bend, midY - this.height * .07, this.target.x, this.target.y)
+        .stroke({ width: 7, color: 0xdfffd4, alpha: .22 })
+        .moveTo(start.x, start.y)
+        .bezierCurveTo(start.x + bend, midY + this.height * .07, this.target.x - bend, midY - this.height * .07, this.target.x, this.target.y)
+        .stroke({ width: 2, color: 0xbfff9d, alpha: .52 });
+      if (this.scene.mode === "shot") this.drawTarget(this.target.x, this.target.y, "");
     }
 
     drawInstructions() {
       const { Graphics, Text } = window.PIXI;
       const isDefend = this.scene.mode === "defend";
       const dragBody = isDefend ? this.actor : this.ball;
-      const pulse = new Graphics().circle(dragBody.position.x, dragBody.position.y, 25)
-        .stroke({ width: 2, color: 0xe8f2eb, alpha: .42 });
+      const pulse = new Graphics().ellipse(dragBody.position.x, dragBody.position.y + 9, 34, 19)
+        .stroke({ width: 3, color: 0xbfff9d, alpha: .82 })
+        .ellipse(dragBody.position.x, dragBody.position.y + 9, 27, 14)
+        .stroke({ width: 1.5, color: 0xe8ffe1, alpha: .54 });
       pulse.label = "pulse";
       const hint = new Text({
-        text: isDefend ? "OYUNCUYU ÇEK" : "TOPU GERİYE ÇEK",
-        style: { fontFamily: "Arial", fontSize: 9, fontWeight: "900", fill: 0xffffff, letterSpacing: 1.4 }
+        text: "SEN",
+        style: { fontFamily: "Arial", fontSize: 11, fontWeight: "900", fill: 0xc9ff9f, letterSpacing: 1.5 }
       });
       hint.anchor.set(.5);
       hint.x = dragBody.position.x;
-      hint.y = dragBody.position.y - 38;
+      hint.y = dragBody.position.y - 43;
       hint.label = "hint";
-      this.app.stage.addChild(pulse, hint);
+      const pointerY = Math.min(this.height * .79, dragBody.position.y + 75);
+      const pointer = new Graphics().circle(dragBody.position.x + 38, pointerY, 25)
+        .fill({ color: 0x09120d, alpha: .5 })
+        .stroke({ width: 2, color: 0xffffff, alpha: .72 })
+        .moveTo(dragBody.position.x + 38, pointerY - 9)
+        .lineTo(dragBody.position.x + 38, pointerY + 9)
+        .moveTo(dragBody.position.x + 30, pointerY - 2)
+        .lineTo(dragBody.position.x + 38, pointerY - 10)
+        .lineTo(dragBody.position.x + 46, pointerY - 2)
+        .stroke({ width: 2.5, color: 0xffffff, alpha: .86 });
+      pointer.label = "gesture";
+      this.app.stage.addChild(pulse, hint, pointer);
       this.pulse = pulse;
       this.hint = hint;
+      this.gesture = pointer;
     }
 
     enableSling() {
@@ -271,8 +329,9 @@
       this.guide.clear()
         .moveTo(this.anchor.x, this.anchor.y).lineTo(this.dragPoint.x, this.dragPoint.y)
         .stroke({ width: 4, color: 0xe9eee8, alpha: .85 })
-        .moveTo(this.anchor.x, this.anchor.y).lineTo(endX, endY)
-        .stroke({ width: 3, color: power > .72 ? 0xe6b77f : 0xb9d4c0, alpha: .75 });
+        .moveTo(this.dragPoint.x, this.dragPoint.y)
+        .bezierCurveTo(this.anchor.x, this.anchor.y, (this.anchor.x + endX) / 2, (this.anchor.y + endY) / 2, endX, endY)
+        .stroke({ width: 4, color: power > .72 ? 0xbfff76 : 0xe9eee8, alpha: .8 });
       for (let index = 1; index <= 4; index++) {
         this.guide.circle(this.anchor.x + dx * index * .35, this.anchor.y + dy * index * .35, 2.5)
           .fill({ color: 0xffffff, alpha: .45 - index * .07 });
@@ -303,22 +362,26 @@
       const powerQuality = 1 - Math.min(1, Math.abs(Math.min(pull, 140) - 105) / 100);
       const skillFactor = Math.min(1, (Number(this.scene.skill || 50) + Number(this.scene.energy || 70) * .22) / 105);
       this.quality = Math.max(0, Math.min(1, alignment * .55 + powerQuality * .25 + skillFactor * .2));
+      const targetDistance = Math.hypot(targetDx, targetDy);
       const widthForce = this.scene.mode === "defend"
-        ? Math.max(.016, Math.min(.045, this.width * .00004))
-        : Math.max(.006, Math.min(.018, this.width * .000014));
+        ? Math.max(.016, Math.min(.045, targetDistance * .00006))
+        : Math.max(.006, Math.min(.018, targetDistance * .000018));
       const force = widthForce * (.55 + Math.min(pull, 140) / 140 * .55);
       Body.setStatic(body, false);
       Body.applyForce(body, body.position, { x: direction.x * force, y: direction.y * force });
       this.released = true;
       this.releaseElapsed = 0;
       this.guide.clear();
+      if (this.route) this.route.visible = false;
+      if (this.targetMarker) this.targetMarker.visible = false;
       if (this.pulse) this.pulse.visible = false;
       if (this.hint) this.hint.visible = false;
+      if (this.gesture) this.gesture.visible = false;
       this.scene.onMode?.(this.scene.mode === "shot" ? "ŞUT YOLDA…" : this.scene.mode === "pass" ? "PAS YOLDA…" : "MÜDAHALEYE GİDİYORSUN…");
     }
 
     tick(deltaMS) {
-      if (!this.physics || this.destroyed) return;
+      if (!this.physics || this.destroyed || this.paused) return;
       this.elapsed += deltaMS;
       if (this.released && !this.resolved) this.releaseElapsed += deltaMS;
       if (this.scene.mode === "shot" && this.released && !this.resolved) this.moveGoalkeeper(deltaMS);
@@ -343,9 +406,9 @@
       if (!this.goalkeeper || this.releaseElapsed < 160) return;
       const { Body } = window.Matter;
       const reaction = .055 + Math.max(0, 75 - Number(this.scene.skill || 50)) * .0006;
-      const targetY = Math.max(this.height * .31, Math.min(this.height * .69, this.ball.position.y));
-      const step = (targetY - this.goalkeeper.position.y) * reaction * Math.min(2, deltaMS / 16.67);
-      Body.setPosition(this.goalkeeper, { x: this.goalkeeper.position.x, y: this.goalkeeper.position.y + step });
+      const targetX = Math.max(this.width * .29, Math.min(this.width * .71, this.ball.position.x));
+      const step = (targetX - this.goalkeeper.position.x) * reaction * Math.min(2, deltaMS / 16.67);
+      Body.setPosition(this.goalkeeper, { x: this.goalkeeper.position.x + step, y: this.goalkeeper.position.y });
     }
 
     onCollision(event) {
@@ -423,36 +486,57 @@
 
     circleBody(x, y, radius, options, fill, stroke) {
       const body = window.Matter.Bodies.circle(x, y, radius, options);
-      const graphic = new window.PIXI.Graphics().circle(0, 0, radius).fill(fill).stroke({ width: 1.5, color: stroke });
+      const graphic = new window.PIXI.Graphics().circle(0, 0, radius)
+        .fill(fill).stroke({ width: 1.5, color: stroke })
+        .circle(-radius * .22, -radius * .2, radius * .25).fill(stroke)
+        .moveTo(radius * .1, -radius * .62).lineTo(radius * .55, -radius * .15)
+        .lineTo(radius * .35, radius * .42).stroke({ width: 1, color: stroke, alpha: .75 });
       graphic.label = `${body.label}-visual`;
       this.addBody(body, graphic);
       return body;
     }
 
-    playerBody(x, y, color, label, isStatic = true, protagonist = false, radius = 13) {
+    playerBody(x, y, color, label, isStatic = true, protagonist = false, radius = 13, shirtNumber = "") {
       const body = window.Matter.Bodies.circle(x, y, radius, {
         label, isStatic, restitution: .25, frictionAir: .045
       });
-      const graphic = this.playerGraphic(color, protagonist, radius);
+      const graphic = this.playerGraphic(color, protagonist, radius, shirtNumber, label === "goalkeeper");
+      const perspective = .68 + Math.max(.15, Math.min(1, y / this.height)) * .48;
+      graphic.scale.set(perspective);
       this.addBody(body, graphic);
       return body;
     }
 
-    addStaticPlayer(x, y, color, label) {
-      return this.playerBody(x, y, color, label, true, false, 12);
+    addStaticPlayer(x, y, color, label, shirtNumber = "") {
+      return this.playerBody(x, y, color, label, true, false, 12, shirtNumber);
     }
 
-    playerGraphic(color, protagonist, radius) {
+    playerGraphic(color, protagonist, radius, shirtNumber, goalkeeper = false) {
       const { Container, Graphics, Text } = window.PIXI;
       const container = new Container();
-      container.addChild(new Graphics().ellipse(0, radius * .7, radius * .82, radius * .38).fill({ color: 0x07100a, alpha: .3 }));
-      if (protagonist) container.addChild(new Graphics().circle(0, 0, radius + 7).stroke({ width: 3, color: 0xc4dfca, alpha: .8 }));
-      container.addChild(new Graphics().circle(0, 0, radius).fill(color).stroke({ width: 2, color: 0x102017, alpha: .9 }));
-      if (protagonist) {
-        const text = new Text({ text: "SEN", style: { fontFamily: "Arial", fontSize: 7, fontWeight: "900", fill: 0x102017 } });
-        text.anchor.set(.5);
-        container.addChild(text);
+      const skin = 0xb97854, shorts = protagonist ? 0x171c1a : goalkeeper ? 0x14734a : 0x20251f;
+      container.addChild(new Graphics().ellipse(0, 17, 13, 5).fill({ color: 0x06100a, alpha: .35 }));
+      container.addChild(new Graphics()
+        .roundRect(-7, 7, 5, 13, 2).fill(shorts)
+        .roundRect(2, 7, 5, 13, 2).fill(shorts)
+        .roundRect(-8, 18, 6, 3, 1).fill(0xe9eee8)
+        .roundRect(2, 18, 6, 3, 1).fill(0xe9eee8));
+      container.addChild(new Graphics()
+        .poly([-10,-9,10,-9,8,8,-8,8]).fill(color)
+        .poly([-10,-7,-16,3,-12,6,-6,-2]).fill(color)
+        .poly([10,-7,16,3,12,6,6,-2]).fill(color)
+        .circle(-14,5,2.5).fill(skin)
+        .circle(14,5,2.5).fill(skin)
+        .circle(0,-15,5.5).fill(skin)
+        .arc(0,-16,5.8,Math.PI,Math.PI*2).stroke({ width: 3, color: 0x211812 }));
+      if (shirtNumber !== "") {
+        const number = new Text({ text: String(shirtNumber), style: { fontFamily: "Arial", fontSize: 8, fontWeight: "900", fill: protagonist ? 0x172019 : 0xf3f3ed } });
+        number.anchor.set(.5);
+        number.y = -1;
+        container.addChild(number);
       }
+      if (protagonist) container.addChild(new Graphics().ellipse(0, 12, radius + 14, radius * .72)
+        .stroke({ width: 2.5, color: 0xbfff8b, alpha: .84 }));
       return container;
     }
 
@@ -492,6 +576,31 @@
 
     ballRadius() {
       return Math.max(7, Math.min(11, Math.min(this.width, this.height) * .018));
+    }
+
+    togglePause() {
+      if (this.resolved || this.destroyed) return false;
+      this.paused = !this.paused;
+      if (this.paused) {
+        const { Container, Graphics, Text } = window.PIXI;
+        const layer = new Container();
+        layer.addChild(new Graphics().rect(0, 0, this.width, this.height).fill({ color: 0x07100a, alpha: .52 }));
+        const label = new Text({
+          text: "DURAKLATILDI",
+          style: { fontFamily: "Arial", fontSize: Math.min(24, this.width * .055), fontWeight: "900", fill: 0xf1f4ef, letterSpacing: 2 }
+        });
+        label.anchor.set(.5);
+        label.position.set(this.width / 2, this.height / 2);
+        layer.addChild(label);
+        this.app.stage.addChild(layer);
+        this.pauseLayer = layer;
+        this.scene.onMode?.("Devam etmek için oynat düğmesine dokun");
+      } else {
+        this.pauseLayer?.destroy({ children: true });
+        this.pauseLayer = null;
+        this.scene.onMode?.(this.scene.mode === "shot" ? "Topa dokun, geriye çek ve kaleye bırak" : this.scene.mode === "pass" ? "Topa dokun, geriye çek ve hedefe bırak" : "Oyuncuyu geriye çek ve topa bırak");
+      }
+      return this.paused;
     }
 
     destroy() {
