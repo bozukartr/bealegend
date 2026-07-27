@@ -65,14 +65,18 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 
 ### Faz 5 — Doğrudan saha etkileşimi
 
-- Karar kartı önce taktik seçer; sonucu artık doğrudan üretmez
-- Pas tercihlerinde takım arkadaşı sahadan dokunularak seçilir
-- Şut tercihlerinde topun üzerinden kaleye doğru sürükleme yapılır
-- Savunma tercihlerinde müdahale bölgesi sahadan belirlenir
-- Top ve aktif oyuncu seçilen hedefe gerçek zamanlı hareket eder
-- Sonuç hesaplandıktan sonra gol, asist, müdahale veya başarısızlık sahada gösterilir
+- Maç sekanslarında karar kartı veya seçenek bulunmaz
+- Canlı sekans, ana navigasyonu kapatan gerçek tam ekran sahada oynanır
+- Matter.js 0.20 tabanlı 2D katı cisim, kuvvet ve çarpışma simülasyonu
+- Şut ve pas için topu geriye çekip bırakmaya dayalı sling kontrolü
+- Savunmada oyuncuyu topun yoluna fırlatan fiziksel müdahale kontrolü
+- Şut yönüne gecikmeli tepki veren, hareketli ve çarpışabilir kaleci
+- Pas hedef alanı, rakip blokları, kale direkleri ve sonuç sensörleri
+- Top, oyuncu ve kaleci konumlarının her karede fizik motorundan çizilmesi
+- Sonucun gerçek yörünge, güç, hedef sapması ve çarpışmalarla belirlenmesi
 - Animasyon tamamlanmadan sonraki kritik ana geçilmez
-- WebGL motoru kullanılamazsa tek dokunuşlu HTML karar akışı korunur
+- WebGL veya fizik motoru kullanılamazsa tek dokunuşlu güvenli akış korunur
+- PixiJS ve Matter.js çalışma zamanları ile lisansları repoya sabitlenmiştir
 
 Projeyi çalıştırmak için `index.html` dosyasını açabilir veya basit bir statik
 sunucu kullanabilirsiniz:
