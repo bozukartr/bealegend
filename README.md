@@ -67,6 +67,9 @@ Mobil öncelikli, karar odaklı futbolcu kariyer simülasyonu.
 
 - Maç sekanslarında karar kartı veya seçenek bulunmaz
 - Canlı sekans, ana navigasyonu kapatan gerçek tam ekran sahada oynanır
+- Kale üstte ve kontrol edilen oyuncu altta olacak şekilde dikey hücum kamerası
+- Perspektif saha çizgileri, tribün bandı ve dairesel piyon yerine oyuncu silüetleri
+- Sekans kartı, maç puanı, üç aşamalı ilerleme ve canlı fizik alt HUD'ı
 - Matter.js 0.20 tabanlı 2D katı cisim, kuvvet ve çarpışma simülasyonu
 - Şut ve pas için topu geriye çekip bırakmaya dayalı sling kontrolü
 - Savunmada oyuncuyu topun yoluna fırlatan fiziksel müdahale kontrolü
