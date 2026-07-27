@@ -76,6 +76,8 @@
       this.releaseElapsed = 0;
       this.bodies = [];
       this.visuals = [];
+      this.goalBounds = null;
+      this.passZone = null;
       this.app.stage.removeAllListeners();
       this.app.stage.removeChildren();
       this.physics = Engine.create();
@@ -149,12 +151,14 @@
       this.ball = this.circleBody(width * .43, height * .705, this.ballRadius(), {
         label: "ball", restitution: .7, frictionAir: .014, isStatic: true
       }, 0xf4f0e4, 0x17241c);
-      this.actor = this.playerBody(width * .39, height * .72, 0xf1f3ef, "actor", true, true, 13, 10);
+      this.actor = this.playerBody(width * .37, height * .74, 0xf1f3ef, "actor", true, true, 13, 10);
+      this.actor.isSensor = true;
       this.goalkeeper = this.playerBody(width * .5, height * .285, 0x38b578, "goalkeeper", true, false, 11, 1);
-      this.addStaticPlayer(width * .58, height * .47, 0xd76f35, "defender", 4);
-      this.addStaticPlayer(width * .72, height * .585, 0xd76f35, "defender", 6);
-      this.addStaticPlayer(width * .58, height * .735, 0xd76f35, "defender", 8);
+      this.addStaticPlayer(width * .3, height * .47, 0xd76f35, "defender", 4);
+      this.addStaticPlayer(width * .76, height * .54, 0xd76f35, "defender", 6);
+      this.addStaticPlayer(width * .65, height * .66, 0xd76f35, "defender", 8);
       this.sensorBody(width * .5, goalY + 2, goalRight - goalLeft - 18, 16, "goal");
+      this.goalBounds = { left: goalLeft + 7, right: goalRight - 7, y: goalY + 5 };
       this.anchor = { x: this.ball.position.x, y: this.ball.position.y };
       this.target = { x: width * .66, y: goalY + 2 };
       this.scene.onMode?.("ŞUT · Topa dokun, geriye çek ve kaleye bırak");
@@ -165,13 +169,16 @@
       this.ball = this.circleBody(width * .42, height * .71, this.ballRadius(), {
         label: "ball", restitution: .58, frictionAir: .02, isStatic: true
       }, 0xf4f0e4, 0x17241c);
-      this.actor = this.playerBody(width * .38, height * .73, 0xf1f3ef, "actor", true, true, 13, 10);
+      this.actor = this.playerBody(width * .36, height * .75, 0xf1f3ef, "actor", true, true, 13, 10);
+      this.actor.isSensor = true;
       const targetX = width * .67, targetY = height * .39;
       this.playerBody(targetX, targetY, 0xf1f3ef, "teammate", true, false, 11, 7);
-      this.addStaticPlayer(width * .49, height * .48, 0xd76f35, "defender", 5);
-      this.addStaticPlayer(width * .65, height * .58, 0xd76f35, "defender", 4);
-      this.addStaticPlayer(width * .29, height * .42, 0xd76f35, "defender", 3);
-      this.sensorBody(targetX, targetY, Math.max(48, width * .13), Math.max(44, height * .065), "pass-target", true);
+      this.addStaticPlayer(width * .37, height * .49, 0xd76f35, "defender", 5);
+      this.addStaticPlayer(width * .78, height * .58, 0xd76f35, "defender", 4);
+      this.addStaticPlayer(width * .24, height * .4, 0xd76f35, "defender", 3);
+      const zoneWidth = Math.max(58, width * .16), zoneHeight = Math.max(50, height * .07);
+      this.sensorBody(targetX, targetY, zoneWidth, zoneHeight, "pass-target", true);
+      this.passZone = { x: targetX, y: targetY, radius: Math.min(zoneWidth, zoneHeight) * .55 };
       this.anchor = { x: this.ball.position.x, y: this.ball.position.y };
       this.target = { x: targetX, y: targetY };
       this.drawTarget(targetX, targetY, "HEDEF");
@@ -186,7 +193,7 @@
         label: "ball", restitution: .52, frictionAir: .005
       }, 0xf4f0e4, 0x17241c);
       this.playerBody(width * .66, height * .36, 0xd76f35, "opponent", true, false, 11, 9);
-      this.addStaticPlayer(width * .54, height * .53, 0xd76f35, "screen", 6);
+      this.addStaticPlayer(width * .72, height * .52, 0xd76f35, "screen", 6);
       this.sensorBody(width * .5, height * .84, width * .82, 18, "concede");
       this.anchor = { x: this.actor.position.x, y: this.actor.position.y };
       this.target = { x: this.ball.position.x, y: this.ball.position.y };
@@ -290,7 +297,7 @@
         if (this.released || this.resolved) return;
         const body = this.scene.mode === "defend" ? this.actor : this.ball;
         const point = event.global;
-        if (Math.hypot(point.x - body.position.x, point.y - body.position.y) > 56) return;
+        if (Math.hypot(point.x - body.position.x, point.y - body.position.y) > 72) return;
         this.anchor = { x: body.position.x, y: body.position.y };
         if (this.scene.mode === "defend") {
           this.target = { x: this.ball.position.x, y: this.ball.position.y };
@@ -311,6 +318,8 @@
         window.Matter.Body.setPosition(body, this.dragPoint);
         this.syncVisuals();
         this.drawGuide();
+        const power = Math.min(100, Math.round(Math.hypot(dx, dy) / max * 100));
+        this.scene.onMode?.(`GÜÇ ${power} · Bırak ve oyna`);
       });
       const release = () => {
         if (!this.dragging) return;
@@ -319,6 +328,7 @@
       };
       stage.on("pointerup", release);
       stage.on("pointerupoutside", release);
+      stage.on("pointercancel", release);
     }
 
     drawGuide() {
@@ -367,8 +377,13 @@
         ? Math.max(.016, Math.min(.045, targetDistance * .00006))
         : Math.max(.006, Math.min(.018, targetDistance * .000018));
       const force = widthForce * (.55 + Math.min(pull, 140) / 140 * .55);
+      const powerRatio = Math.min(1, pull / 120);
+      const launchSpeed = this.scene.mode === "defend"
+        ? 10 + powerRatio * 8
+        : 6.5 + powerRatio * 5.5 + skillFactor * 1.2;
       Body.setStatic(body, false);
-      Body.applyForce(body, body.position, { x: direction.x * force, y: direction.y * force });
+      Body.setVelocity(body, { x: direction.x * launchSpeed, y: direction.y * launchSpeed });
+      Body.applyForce(body, body.position, { x: direction.x * force * .12, y: direction.y * force * .12 });
       this.released = true;
       this.releaseElapsed = 0;
       this.guide.clear();
@@ -393,6 +408,14 @@
         this.pulse.alpha = .55 + Math.sin(this.elapsed / 260) * .18;
       }
       if (!this.released || this.resolved) return;
+      if (this.scene.mode === "shot" && this.goalBounds && this.ball.position.y <= this.goalBounds.y &&
+        this.ball.position.x >= this.goalBounds.left && this.ball.position.x <= this.goalBounds.right) {
+        return this.resolve(true, "GOOOL!");
+      }
+      if (this.scene.mode === "pass" && this.passZone &&
+        Math.hypot(this.ball.position.x - this.passZone.x, this.ball.position.y - this.passZone.y) <= this.passZone.radius) {
+        return this.resolve(true, "KUSURSUZ PAS");
+      }
       const body = this.scene.mode === "defend" ? this.actor : this.ball;
       const outside = body.position.x < -35 || body.position.x > this.width + 35 ||
         body.position.y < -35 || body.position.y > this.height + 35;
@@ -403,9 +426,9 @@
     }
 
     moveGoalkeeper(deltaMS) {
-      if (!this.goalkeeper || this.releaseElapsed < 160) return;
+      if (!this.goalkeeper || this.releaseElapsed < 280 + this.quality * 130) return;
       const { Body } = window.Matter;
-      const reaction = .055 + Math.max(0, 75 - Number(this.scene.skill || 50)) * .0006;
+      const reaction = .032 + Math.max(0, 70 - Number(this.scene.skill || 50)) * .00018;
       const targetX = Math.max(this.width * .29, Math.min(this.width * .71, this.ball.position.x));
       const step = (targetX - this.goalkeeper.position.x) * reaction * Math.min(2, deltaMS / 16.67);
       Body.setPosition(this.goalkeeper, { x: this.goalkeeper.position.x + step, y: this.goalkeeper.position.y });
@@ -485,7 +508,9 @@
     }
 
     circleBody(x, y, radius, options, fill, stroke) {
-      const body = window.Matter.Bodies.circle(x, y, radius, options);
+      const shouldStartStatic = Boolean(options?.isStatic);
+      const body = window.Matter.Bodies.circle(x, y, radius, { ...options, isStatic: false });
+      if (shouldStartStatic) window.Matter.Body.setStatic(body, true);
       const graphic = new window.PIXI.Graphics().circle(0, 0, radius)
         .fill(fill).stroke({ width: 1.5, color: stroke })
         .circle(-radius * .22, -radius * .2, radius * .25).fill(stroke)
